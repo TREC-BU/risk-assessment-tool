@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.egg-info/
+build/
+# Service account keys never go in the repo.
+*service_account*.json
+credentials*.json
