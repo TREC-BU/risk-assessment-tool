@@ -1,0 +1,10 @@
+.git
+.venv
+build
+secrets
+fonts
+tests
+examples
+.env
+**/__pycache__
+*.egg-info

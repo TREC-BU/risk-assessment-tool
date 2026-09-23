@@ -1,0 +1,20 @@
+# docker compose up -d --build
+#
+# Needs, next to this file (all git-ignored):
+#   secrets/slack.env         SLACK_BOT_TOKEN, SLACK_APP_TOKEN, RISK_SLACK_CHANNEL
+#   secrets/google-key.json   the service account key
+#   fonts/                    Helvetica Neue from a Mac
+# RISK_SHEET_ID comes from the committed .env.
+
+services:
+  risk-bot:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+      - secrets/slack.env
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/google-key.json
+    volumes:
+      - ./secrets/google-key.json:/run/secrets/google-key.json:ro
+      - ./fonts:/app/fonts:ro

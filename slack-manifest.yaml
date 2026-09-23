@@ -1,0 +1,26 @@
+# Paste into https://api.slack.com/apps → Create New App → From an app manifest.
+display_information:
+  name: Risk Bot
+  description: Builds the risk assessment PDF from the Google Sheet
+  background_color: "#d20000"
+features:
+  bot_user:
+    display_name: Risk Bot
+    always_online: true
+  slash_commands:
+    - command: /risk
+      description: Build the risk assessment PDF from the sheet
+      usage_hint: "pdr | final | help"
+      should_escape: false
+oauth_config:
+  scopes:
+    bot:
+      - commands
+      - chat:write
+      - files:write
+settings:
+  interactivity:
+    is_enabled: false
+  org_deploy_enabled: false
+  socket_mode_enabled: true
+  token_rotation_enabled: false

@@ -78,17 +78,32 @@ def parse_tab(tab: str, grid: Grid) -> list[Row]:
     return rows
 
 
-def fetch(sheet_key: str, credentials: str | None = None) -> dict[str, Grid]:
+@dataclass
+class Sheet:
+    """Raw tab grids plus each tab's gid, which cell links need."""
+    grids: dict[str, Grid]
+    gids: dict[str, int]
+
+
+def fetch(sheet_key: str, credentials: str | None = None) -> Sheet:
     """Pull every tab's raw cell grid (formatted values) from Google Sheets."""
     import gspread
 
     client = (
-        gspread.service_account(filename=credentials)
+        gspread.service_account(filename=Path(credentials).expanduser())
         if credentials
         else gspread.service_account()
     )
     book = client.open_by_key(sheet_key)
-    return {tab: book.worksheet(tab).get_all_values() for tab in TABS}
+    grids, gids = {}, {}
+    for tab in TABS:
+        try:
+            ws = book.worksheet(tab)
+        except gspread.exceptions.WorksheetNotFound:
+            raise SheetFormatError(f"the sheet has no tab named '{tab}'") from None
+        grids[tab] = ws.get_all_values()
+        gids[tab] = ws.id
+    return Sheet(grids, gids)
 
 
 def save_grids(grids: dict[str, Grid], path: Path) -> None:

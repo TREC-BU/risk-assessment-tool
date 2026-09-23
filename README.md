@@ -2,6 +2,24 @@
 
 Builds the REC risk assessment PDF from the club's Google Sheet.
 
+> [!IMPORTANT]
+> **This repo is configured for the Terrier Ride Engineering Club (TREC)
+> only and won't work as-is in a fork.** Much of what it depends on lives
+> outside the repo:
+>
+> - **Our Google Sheet.** Its tab names and column layout are what the parser
+>   expects, and its ID is in `.env`.
+> - **Our Google service account and Slack app.** The keys and tokens are
+>   kept on our server and are not included.
+> - **Licensed fonts.** Helvetica Neue ships with macOS and isn't
+>   redistributable.
+> - **TREC-specific content.** This includes the method (scales, matrix,
+>   bands, document prefixes, scope text) in `risk-config.typ` and the club's
+>   document style in `template.typ`.
+>
+> To adapt it for another team you'd need to supply all of the above and
+> rework the config and template.
+
 ```
 Google Sheet ──gspread──▶ validate (Pydantic) ──▶ build/risk.json ──typst──▶ PDF
                               ▲
@@ -32,11 +50,16 @@ python3 -m venv .venv
 You also need Typst 0.15+ on `PATH`. The fonts are Helvetica Neue and Arial,
 which ship with macOS; Windows has Arial.
 
-Share the sheet with the service account's email (Viewer is enough), then:
+Share the sheet with the service account's email (Viewer is enough). Put the
+key at `~/.config/gspread/service_account.json`, or point
+`GOOGLE_APPLICATION_CREDENTIALS` at it.
+
+The sheet ID is read from `.env` in the repo root (committed; the ID alone
+grants no access). Environment variables override `.env`:
 
 ```sh
-export RISK_SHEET_ID=<key from the sheet URL>
-export GOOGLE_APPLICATION_CREDENTIALS=~/keys/rec-service-account.json
+# .env
+RISK_SHEET_ID=<key from the sheet URL>
 ```
 
 Never commit the key. `.gitignore` excludes the usual names.
@@ -52,6 +75,12 @@ Never commit the key. `.gitignore` excludes the usual names.
 The PDF goes to `build/risk-assessment-<mode>.pdf`. Each fetch is cached in
 `build/sheet-cache.json`. Use `--from build/sheet-cache.json` to rebuild
 without the network, or `--from examples/sample-sheet.json` to try it out.
+
+## Slack bot
+
+Team members can build the PDF from Slack with `/risk pdr` or `/risk final`;
+the bot runs in Docker on the server. Setup and operation:
+[docs/slack-bot.md](docs/slack-bot.md).
 
 ## Sheet layout
 

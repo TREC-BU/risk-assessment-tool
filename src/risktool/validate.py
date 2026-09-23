@@ -24,24 +24,48 @@ Mode = Literal["pdr", "final"]
 RIDER = "rider"
 
 
+@dataclass(frozen=True)
+class Issue:
+    """One problem, located by tab and (when it has one) spreadsheet row."""
+    tab: str
+    message: str
+    row: int | None = None
+    ident: str = ""
+
+    @property
+    def where(self) -> str:
+        if self.row is None:
+            return self.tab
+        return f"{self.tab} row {self.row}" + (f" ({self.ident})" if self.ident else "")
+
+    def __str__(self) -> str:
+        return f"{self.where}: {self.message}"
+
+
+def _issue(where: Row | str, msg: str) -> Issue:
+    if isinstance(where, Row):
+        return Issue(where.tab, msg, where.number, where.get(KEY_HEADER[where.tab]))
+    return Issue(where, msg)
+
+
 @dataclass
 class Report:
     mode: Mode
-    errors: list[str] = field(default_factory=list)
-    warnings: list[str] = field(default_factory=list)
+    errors: list[Issue] = field(default_factory=list)
+    warnings: list[Issue] = field(default_factory=list)
     data: dict | None = None
 
     @property
     def ok(self) -> bool:
         return not self.errors
 
-    def error(self, where: str, msg: str) -> None:
-        self.errors.append(f"{where}: {msg}")
+    def error(self, where: Row | str, msg: str) -> None:
+        self.errors.append(_issue(where, msg))
 
-    def warn(self, where: str, msg: str) -> None:
-        self.warnings.append(f"{where}: {msg}")
+    def warn(self, where: Row | str, msg: str) -> None:
+        self.warnings.append(_issue(where, msg))
 
-    def residual(self, where: str, msg: str) -> None:
+    def residual(self, where: Row | str, msg: str) -> None:
         """A mitigation/residual rule: an error for Final, a warning for PDR."""
         (self.error if self.mode == "final" else self.warn)(where, msg)
 
@@ -86,7 +110,7 @@ def _load_tab(tab: str, grid: Grid, report: Report) -> list[tuple[Row, BaseModel
                 and not (k == "misuse" and v in ("0", "FALSE"))
             ]
             if stray:
-                report.warn(row.where(), f"ignored: row has {', '.join(stray)} "
+                report.warn(row, f"ignored: row has {', '.join(stray)} "
                             f"but no {' / '.join(CONTENT_FIELDS[tab])}")
             continue
         try:
@@ -94,11 +118,11 @@ def _load_tab(tab: str, grid: Grid, report: Report) -> list[tuple[Row, BaseModel
                 {k: v for k, v in row.values.items() if k in model.model_fields}
             )
         except ValidationError as exc:
-            report.error(row.where(), _fmt_pydantic(exc))
+            report.error(row, _fmt_pydantic(exc))
             continue
         ident = getattr(item, key)
         if ident in seen:
-            report.error(row.where(), f"duplicate {key} (first used on row {seen[ident]})")
+            report.error(row, f"duplicate {key} (first used on row {seen[ident]})")
             continue
         seen[ident] = row.number
         out.append((row, item))
@@ -141,7 +165,7 @@ def _check_mitigation(row: Row, m: Mitigation, config: MethodConfig, report: Rep
     mtype = config.mitigation_type(m.type)
     if mtype is None:
         names = ", ".join(t.name for t in config.mitigation_types)
-        report.error(row.where(), f"type '{m.type}' is not one of {names}")
+        report.error(row, f"type '{m.type}' is not one of {names}")
     else:
         m.type = mtype.name  # normalise capitalisation
 
@@ -149,7 +173,7 @@ def _check_mitigation(row: Row, m: Mitigation, config: MethodConfig, report: Rep
         prefix = ref.split("_", 1)[0]
         if prefix not in config.document_prefixes:
             known = ", ".join(config.document_prefixes) or "none configured"
-            report.error(row.where(), f"design_ref '{ref}' has unknown document prefix "
+            report.error(row, f"design_ref '{ref}' has unknown document prefix "
                          f"'{prefix}' (known: {known})")
 
 
@@ -159,7 +183,7 @@ def _scores(config: MethodConfig, p: int, s: int) -> dict:
 
 def _check_risk(row, r: Risk, hazards, situations, mitigations, config: MethodConfig,
                 report: Report) -> dict:
-    where = row.where()
+    where = row
     if r.hazard_id not in hazards:
         report.error(where, f"hazard_id '{r.hazard_id}' is not on the Hazards tab")
     if r.situation_id not in situations:
@@ -248,15 +272,15 @@ def _coverage_warnings(loaded, situations, report: Report) -> None:
     for row, h in loaded["Hazards"]:
         mine = [r for r in risks if r.hazard_id == h.hazard_id]
         if not mine:
-            report.warn(row.where(), "hazard has no risks")
+            report.warn(row, "hazard has no risks")
             continue
         persons = {situations[r.situation_id].persons.strip().lower()
                    for r in mine if r.situation_id in situations}
         if persons == {RIDER}:
-            report.warn(row.where(), "hazard is assessed only against rider situations")
+            report.warn(row, "hazard is assessed only against rider situations")
     for row, s in loaded["Situations"]:
         if not any(r.situation_id == s.situation_id for r in risks):
-            report.warn(row.where(), "situation has no risks")
+            report.warn(row, "situation has no risks")
     for row, m in loaded["Mitigations"]:
         if not any(m.mitigation_id in r.mitigations for r in risks):
-            report.warn(row.where(), "mitigation is not linked to any risk")
+            report.warn(row, "mitigation is not linked to any risk")

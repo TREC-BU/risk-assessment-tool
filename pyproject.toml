@@ -6,10 +6,12 @@ requires-python = ">=3.11"
 dependencies = ["pydantic>=2.6", "gspread>=6.0"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "slack_bolt>=1.18"]
+bot = ["slack_bolt>=1.18"]
 
 [project.scripts]
 risktool = "risktool.cli:main"
+risktool-slack = "risktool.slackbot:main"
 
 [build-system]
 requires = ["setuptools>=68"]

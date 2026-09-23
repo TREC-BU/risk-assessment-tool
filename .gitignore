@@ -4,4 +4,8 @@ __pycache__/
 build/
 # Service account keys never go in the repo.
 *service_account*.json
-credentials*.json
+*credentials*.json
+
+# Slack bot secrets and licensed fonts stay on the server.
+secrets/
+fonts/

@@ -8,7 +8,7 @@ def run(config, mode="final", **tabs):
 
 
 def has(messages, *fragments):
-    return any(all(f in m for f in fragments) for m in messages)
+    return any(all(f in str(m) for f in fragments) for m in messages)
 
 
 def test_clean_sheet_passes(config, base):
@@ -168,3 +168,9 @@ def test_unmitigated_justifiable_risk_needs_justification_in_final(config, base)
     assert r.errors == []
     r = run(config, mode="pdr", risks=[risk(p0=3, s0=2)], **base)
     assert not has(r.warnings, "justification")
+
+
+def test_issues_carry_their_location(config, base):
+    r = run(config, risks=[risk(hz="HZ_404", p0=1, s0=1)], **base)
+    issue = next(e for e in r.errors if "HZ_404" in e.message)
+    assert (issue.tab, issue.row, issue.ident) == ("Risks", 5, "RK_001")
