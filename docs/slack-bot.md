@@ -66,8 +66,9 @@ the repo. Copy it to the server once:
 scp /System/Library/Fonts/HelveticaNeue.ttc server:risk-assessment-tool/fonts/
 ```
 
-Arial is installed in the image from Microsoft's free core fonts package. The
-bot checks both fonts at startup and refuses to run without them, so a
+Arial (Microsoft's free core fonts) and Raleway (open source) are downloaded
+into the image when it's built. The bot checks all three fonts at startup and
+refuses to run without them, so a
 missing font can't silently change the layout.
 
 ### 4. Start it

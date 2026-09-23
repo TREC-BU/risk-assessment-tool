@@ -1,13 +1,16 @@
 // Terrier Ride Engineering Club technical documentation style.
 // Measured from "00 TEMPLATE.pdf": US Letter, 1in margins, Helvetica Neue
-// 10pt body, red Arial Bold 16pt numbered sections over a grey rule, red
-// table headers, grey centred footer.
+// 10pt body, red 16pt numbered sections over a grey rule, red table headers,
+// grey centred footer. The cover title and section headings use Raleway Bold,
+// which isn't committed: see "Fonts" in the README.
 
 #let red = rgb("#d20000")
 #let rule-grey = rgb("#cccccc")
 #let footer-grey = rgb("#c1c1c1")
 #let sans = ("Helvetica Neue", "Helvetica", "Arial")
 #let heading-sans = ("Arial", "Helvetica Neue")
+// Raleway defaults to old-style figures; section numbers need lining ones.
+#let display(..args) = text(font: ("Raleway", "Arial"), weight: "bold", number-type: "lining", ..args)
 
 // Table with the template's red header row(s). `header` is an array of
 // cells or a single table.header(..) when spans are needed.
@@ -62,7 +65,7 @@
     pagebreak(weak: true)
     block(above: 0pt, below: 14.3pt, inset: (top: 3.6pt), stack(
       spacing: 8.9pt,
-      text(font: heading-sans, size: 16pt, weight: "bold", fill: red, {
+      display(size: 16pt, fill: red, {
         if it.numbering != none { box(width: 27pt, counter(heading).display(it.numbering)) }
         it.body
       }),
@@ -79,7 +82,7 @@
     #set par(first-line-indent: 0pt, spacing: 0pt)
     #v(116pt)
     #align(center)[
-      #text(22pt, weight: "bold", fill: red, title)
+      #display(22pt, fill: red, title)
       #v(22pt)
       #text(10pt, subtitle)
       #v(18pt)

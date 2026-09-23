@@ -1,10 +1,11 @@
-# Risk assessment Slack bot: Python + Typst + Arial.
+# Risk assessment Slack bot: Python + Typst + Arial + Raleway.
 # Helvetica Neue is not in the image (it's licensed with macOS); mount it at
 # /app/fonts at run time. See docs/slack-bot.md.
 
 FROM python:3.12-slim-bookworm
 
 ARG TYPST_VERSION=0.15.1
+ARG RALEWAY_VERSION=5.3.0
 
 # Arial comes from Microsoft's freely redistributable core fonts (Debian contrib).
 RUN sed -i 's/^Components: main$/Components: main contrib/' /etc/apt/sources.list.d/debian.sources \
@@ -19,6 +20,11 @@ RUN arch="$(uname -m)" \
  && mv /tmp/typst-*/typst /usr/local/bin/typst \
  && rm -rf /tmp/typst-* \
  && typst --version
+
+# Raleway (SIL Open Font License) for the title and section headings.
+RUN mkdir -p /usr/share/fonts/truetype/raleway \
+ && curl -fsSL -o /usr/share/fonts/truetype/raleway/Raleway-Bold.ttf \
+    "https://cdn.jsdelivr.net/fontsource/fonts/raleway@${RALEWAY_VERSION}/latin-700-normal.ttf"
 
 WORKDIR /app
 COPY pyproject.toml ./

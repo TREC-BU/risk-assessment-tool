@@ -29,14 +29,14 @@ from typing import Callable
 
 from . import slack_format as fmt
 from .cli import ROOT, load_dotenv
-from .pipeline import BuildResult, CompileError, build
+from .pipeline import BuildResult, CompileError, build, typst_env
 from .sheets import Grid, Sheet, SheetFormatError, fetch
 from .validate import Mode
 
 log = logging.getLogger("risktool.slack")
 
 # The template's fonts. Without them Typst silently substitutes, so refuse to start.
-REQUIRED_FONTS = ("Helvetica Neue", "Arial")
+REQUIRED_FONTS = ("Helvetica Neue", "Arial", "Raleway")
 
 
 @dataclass
@@ -176,7 +176,8 @@ def register(app, service: BuildService, channel: str) -> None:
 
 
 def missing_fonts() -> list[str]:
-    listed = subprocess.run(["typst", "fonts"], capture_output=True, text=True).stdout
+    listed = subprocess.run(["typst", "fonts"], capture_output=True, text=True,
+                            env=typst_env(ROOT)).stdout
     names = {line.strip() for line in listed.splitlines()}
     return [f for f in REQUIRED_FONTS if f not in names]
 

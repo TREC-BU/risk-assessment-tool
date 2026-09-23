@@ -11,7 +11,7 @@ Builds the REC risk assessment PDF from the club's Google Sheet.
 >   expects, and its ID is in `.env`.
 > - **Our Google service account and Slack app.** The keys and tokens are
 >   kept on our server and are not included.
-> - **Licensed fonts.** Helvetica Neue ships with macOS and isn't
+> - **Fonts.** None are committed. Helvetica Neue ships with macOS and isn't
 >   redistributable.
 > - **TREC-specific content.** This includes the method (scales, matrix,
 >   bands, document prefixes, scope text) in `risk-config.typ` and the club's
@@ -47,8 +47,22 @@ python3 -m venv .venv
 .venv/bin/pip install -e '.[dev]'
 ```
 
-You also need Typst 0.15+ on `PATH`. The fonts are Helvetica Neue and Arial,
-which ship with macOS; Windows has Arial.
+You also need Typst 0.15+ on `PATH`.
+
+### Fonts
+
+The document uses Helvetica Neue (body), Arial and Raleway Bold (title and
+section headings). Fonts are never committed. Helvetica Neue and Arial come
+with macOS. Put Raleway in the git-ignored `fonts/` folder, which every build
+searches:
+
+```sh
+mkdir -p fonts
+curl -fsSL -o fonts/Raleway-Bold.ttf \
+  https://cdn.jsdelivr.net/fontsource/fonts/raleway@5.3.0/latin-700-normal.ttf
+```
+
+Without it, Typst quietly falls back to Arial for headings.
 
 Share the sheet with the service account's email (Viewer is enough). Put the
 key at `~/.config/gspread/service_account.json`, or point
