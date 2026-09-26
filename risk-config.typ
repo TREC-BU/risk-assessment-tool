@@ -87,19 +87,9 @@
     MSD: "Mechanical & Structural Design",
   ),
 
-  // Text for the Method section.
-  scope: [
-    This assessment covers the REC 2027 ride through design, fabrication,
-    factory acceptance testing, operation, maintenance and evacuation. It
-    considers riders, operators, maintainers and bystanders, including
-    reasonably foreseeable misuse.
-  ],
-  limits: [
-    Probability is estimated per ride cycle from engineering judgment and
-    component data, not from field statistics. Risks are assessed one
-    hazard and situation pair at a time; combined failures are only
-    considered where a risk states them explicitly.
-  ],
+  // Text for the Method section. Empty prints a TODO marker.
+  scope: [],
+  limits: [],
 )
 
 #metadata(config) <risk-config>

@@ -25,6 +25,9 @@
 
 #let small(body) = text(8.5pt, body)
 #let dash = text(fill: luma(140))[—]
+
+// Marks prose still to be written, so a gap can't slip into a PDF unnoticed.
+#let todo() = text(fill: red, weight: "bold")[\[TODO: write this\]]
 #let ids(list) = if list.len() == 0 { dash } else { list.join(", ") }
 
 #let situation-label(sid) = {
@@ -83,19 +86,13 @@
 
 = Method & Scope
 
-This document records the hazard analysis and risk assessment for the ride.
-Each risk pairs one hazard with one hazardous situation and describes the
-event by which the hazard reaches a person. Risks are scored for probability
-and severity before mitigation, mitigated where required, and scored again.
-#if not final [This is the preliminary design review issue: it presents the
-method, the hazard list and the initial risk scores. Mitigations and residual
-risk follow in the final issue.]
+#todo()
 
 == Scope
-#config.scope
+#if config.scope == [] { todo() } else { config.scope }
 
 == Limits
-#config.limits
+#if config.limits == [] { todo() } else { config.limits }
 
 == Severity Scale
 #doc-table(
@@ -118,11 +115,7 @@ risk follow in the final issue.]
 )
 
 == Risk Matrix
-#lead[
-Acceptability is read from the matrix below for each severity and probability
-pair; it is a lookup, not a score threshold. Every cell carries its band letter
-as well as its colour.
-]
+#lead[#todo()]
 
 #grid(
   columns: (auto, 1fr),
@@ -139,17 +132,10 @@ as well as its colour.
   },
 )
 
-An initial risk in the #bands.at(config.bands.last().code).name band must be
-mitigated and rescored. The final issue requires every residual risk to be
-#bands.at(config.acceptable-max).name or better.
+#todo()
 
 == Mitigation Hierarchy
-#lead[
-Mitigations are listed from most to least effective. Each states whether it
-reduces probability (P), severity (S) or both. Severity may only be lowered by
-a mitigation of a type marked below; administrative measures can lower
-probability but never severity.
-]
+#lead[#todo()]
 
 #doc-table(
   columns: (1fr, 120pt),
@@ -160,10 +146,7 @@ probability but never severity.
 )
 
 = Hazard List
-#lead[
-Hazards are devices, mechanisms, actions or objects with the potential to
-cause harm.
-]
+#lead[#todo()]
 
 #doc-table(
   columns: (52pt, 120pt, 1fr),
@@ -175,11 +158,7 @@ cause harm.
   = Hazardous Situations & Coverage
 
   == Hazardous Situations
-  #lead[
-  A hazardous situation is a person, in a specific position and state during
-  a specific ride phase, where a hazard could reach them. Situations are
-  defined independently of hazards so every combination can be considered.
-  ]
+  #lead[#todo()]
 
   #doc-table(
     columns: (52pt, 72pt, 78pt, 44pt, 1fr),
@@ -191,10 +170,7 @@ cause harm.
   )
 
   == Coverage Grid
-  #lead[
-  Each cell lists the risks assessed for that hazard and situation, with the
-  initial risk band. An empty cell is a combination judged not credible.
-  ]
+  #lead[#todo()]
 
   #let chunk = 9
   #for start in range(0, data.situations.len(), step: chunk) {
@@ -218,8 +194,7 @@ cause harm.
 ]
 
 = Initial Risk Assessment
-Risks are grouped by hazard. P and S are the initial probability and severity;
-the band is read from the risk matrix.
+#todo()
 
 #for hz in data.hazards {
   let risks = data.risks.filter(r => r.hazard_id == hz.hazard_id)
@@ -264,10 +239,7 @@ the band is read from the risk matrix.
   = Residual Risk
 
   == Risk Matrices
-  #lead[
-  Number of risks in each cell before and after mitigation. Shaded cells hold
-  at least one risk.
-  ]
+  #lead[#todo()]
 
   #grid(
     columns: (1fr, 1fr),
@@ -277,10 +249,7 @@ the band is read from the risk matrix.
   )
 
   == Residual Risk Table
-  #lead[
-  Residual scores after the linked mitigations are in place. Risks without
-  mitigations carry their initial scores forward.
-  ]
+  #lead[#todo()]
 
   #doc-table(
     columns: (46pt, 60pt, 20pt, 20pt, 26pt, 20pt, 20pt, 26pt, 1fr),
@@ -309,8 +278,7 @@ the band is read from the risk matrix.
   )
 
   = Traceability
-  Each risk is traced to its mitigations, the design document section that
-  implements them, and the factory acceptance tests that verify them.
+  #todo()
 
   == Document References
   #doc-table(
