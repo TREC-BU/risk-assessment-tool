@@ -3,7 +3,8 @@
     risktool build [--mode pdr|final]   fetch, validate, render the PDF
     risktool check [--mode pdr|final]   fetch and validate only
 
---mode defaults to final. `build --open` opens the PDF afterwards (macOS).
+--mode defaults to final. `build --open` opens the PDF afterwards (macOS);
+`build --publish` also replaces the copy in Google Drive.
 
 The sheet is read from Google Sheets with a service account. Settings such as
 RISK_SHEET_ID can go in a .env file in the current directory; real
@@ -20,8 +21,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+from .drive import Drive, DriveError
 from .pipeline import BUILD, CompileError, build
-from .sheets import SheetFormatError, fetch, load_grids, save_grids
+from .sheets import SheetFormatError, connect, fetch, load_grids, save_grids
 
 ROOT = Path.cwd()
 
@@ -62,6 +64,8 @@ def _args(argv):
                            help="PDF path (default: build/risk-assessment-<mode>.pdf)")
             p.add_argument("-O", "--open", action="store_true",
                            help="open the PDF with macOS `open` once written")
+            p.add_argument("--publish", action="store_true",
+                           help="replace this mode's PDF in the Drive folder next to the sheet")
     return parser.parse_args(argv)
 
 
@@ -70,16 +74,21 @@ def main(argv=None) -> int:
     args = _args(argv)
     root: Path = args.root.resolve()
 
-    if args.source:
-        grids = load_grids(args.source)
-    else:
+    publish = getattr(args, "publish", False)
+    if not args.source or publish:
         if not args.sheet:
             sys.exit("risktool: no sheet given; pass --sheet or set RISK_SHEET_ID")
         try:
-            grids = fetch(args.sheet, args.credentials).grids
+            client = connect(args.credentials)
         except FileNotFoundError as exc:
             sys.exit(f"risktool: service account key not found: {exc.filename}\n"
                      "Put the key there, or set GOOGLE_APPLICATION_CREDENTIALS (in .env is fine).")
+
+    if args.source:
+        grids = load_grids(args.source)
+    else:
+        try:
+            grids = fetch(client, args.sheet).grids
         except SheetFormatError as exc:
             sys.exit(f"risktool: {exc}")
         save_grids(grids, root / BUILD / "sheet-cache.json")
@@ -105,6 +114,14 @@ def main(argv=None) -> int:
                 subprocess.run(["open", str(result.pdf)], check=True)
             except (FileNotFoundError, subprocess.CalledProcessError):
                 print("risktool: couldn't open the PDF (--open needs macOS `open`)", file=sys.stderr)
+    if result.pdf and publish:
+        drive = Drive(client.http_client.session)
+        try:
+            folder = os.environ.get("RISK_DRIVE_FOLDER_ID") or drive.find_folder(args.sheet)
+            print(f"published {drive.publish(result.pdf, args.mode, folder)}")
+        except DriveError as exc:
+            print(f"risktool: couldn't publish to Drive: {exc}", file=sys.stderr)
+            return 1
     return 0
 
 

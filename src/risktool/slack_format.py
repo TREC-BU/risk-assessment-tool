@@ -63,14 +63,20 @@ def crashed(mode: Mode, user: str) -> str:
 
 # ---- Thread reply ----------------------------------------------------------
 
-def result(report: Report, sheet_id: str, gids: dict[str, int]) -> tuple[str, str | None]:
-    """Thread text for a finished build, plus the full plain-text list if it was cut."""
+def result(report: Report, sheet_id: str, gids: dict[str, int],
+           drive: str | None = None) -> tuple[str, str | None]:
+    """Thread text for a finished build, plus the full plain-text list if it was cut.
+
+    `drive` is a line about the Google Drive copy, shown under "Here's the PDF."
+    """
     lines: list[str] = []
     if report.errors:
         lines.append(f"Fix these in the sheet, then run `/risk {report.mode}` again:")
         lines += _bullets(report.errors, sheet_id, gids)
     else:
         lines.append("Here's the PDF.")
+        if drive:
+            lines.append(drive)
     if report.warnings:
         n = len(report.warnings)
         lines.append("")
@@ -83,6 +89,14 @@ def result(report: Report, sheet_id: str, gids: dict[str, int]) -> tuple[str, st
     shown.append(f"_…and {len(lines) - MAX_LINES} more lines. The full list is attached._")
     full = [f"error: {i}" for i in report.errors] + [f"warning: {i}" for i in report.warnings]
     return "\n".join(shown), "\n".join(full) + "\n"
+
+
+def published(link: str) -> str:
+    return f":file_folder: <{link}|The copy in Google Drive> is updated."
+
+
+def publish_failed(reason: str) -> str:
+    return f":warning: Couldn't update the copy in Google Drive: {escape(reason)}"
 
 
 def failure(reason: str) -> str:

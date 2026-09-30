@@ -11,6 +11,9 @@ The bot posts a status message, edits it as the build runs, and replies in its
 thread with the PDF or with the problems to fix. Each problem links to its row
 in the sheet. Builds run one at a time; a second request waits and says so.
 
+Each successful build also replaces that mode's PDF in the Google Drive folder
+next to the sheet, and the thread links to it.
+
 The bot runs on the server in Docker and connects out to Slack (Socket Mode),
 so the server needs no public URL, domain or open port.
 
@@ -71,7 +74,28 @@ into the image when it's built. The bot checks all three fonts at startup and
 refuses to run without them, so a
 missing font can't silently change the layout.
 
-### 4. Start it
+### 4. Google Drive copy
+
+Successful builds replace `Risk assessment (PDR).pdf` or
+`Risk assessment (Final).pdf` in a folder named **Risk assessment PDFs**,
+kept in the same folder as the sheet. The links never change, and Drive keeps
+each earlier build under **Manage versions**.
+
+1. Enable the Google Drive API in the service account's Cloud project.
+2. Create the folder and share it with the service account's email as
+   **Editor**.
+3. If the folder is in someone's My Drive (not a Shared Drive), upload any PDF
+   under each of the two names once. The service account has no Drive storage
+   of its own, so it can replace these files but can't create them. In a
+   Shared Drive it creates them itself.
+
+To use a different folder, put its ID (the part of the folder URL after
+`folders/`) in `.env` as `RISK_DRIVE_FOLDER_ID`.
+
+If the Drive upload fails, the bot still posts the PDF in Slack and says why
+the Drive copy wasn't updated.
+
+### 5. Start it
 
 ```sh
 docker compose up -d --build
@@ -80,7 +104,7 @@ docker compose logs -f        # should end with "listening for /risk in C…"
 
 It restarts on its own after a crash or a server reboot.
 
-### 5. Automatic deploys
+### 6. Automatic deploys
 
 `.github/workflows/deploy.yml` redeploys on every push to `main`. It needs SSH
 access from GitHub's runners to the server (port 22 open to the internet).
@@ -128,3 +152,5 @@ read-only deploy key to the repo if it's private.
 | "the sheet has no tab named '…'" | A tab was renamed; the four tabs must be Hazards, Situations, Mitigations, Risks. |
 | "the PDF compiler failed" | Check the logs; usually a template edit that doesn't compile. |
 | `/risk` gives "dispatch_failed" | The bot isn't running: `docker compose ps`, then check the logs. |
+| "no 'Risk assessment PDFs' folder shared with the bot" | Share the folder with the service account as Editor, or set `RISK_DRIVE_FOLDER_ID`. |
+| "can't create files in a My Drive folder" | Upload a PDF with the name it gives to the folder once (see setup step 4). |

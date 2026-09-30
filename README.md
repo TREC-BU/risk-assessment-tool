@@ -88,7 +88,9 @@ Never commit the key. `.gitignore` excludes the usual names.
 .venv/bin/risktool check               # validate only (also takes --mode)
 ```
 
-The PDF goes to `build/risk-assessment-<mode>.pdf`. Each fetch is cached in
+The PDF goes to `build/risk-assessment-<mode>.pdf`. Add `--publish` to also
+replace the team's copy in Google Drive (see
+[docs/slack-bot.md](docs/slack-bot.md#4-google-drive-copy)). Each fetch is cached in
 `build/sheet-cache.json`. Use `--from build/sheet-cache.json` to rebuild
 without the network, or `--from examples/sample-sheet.json` to try it out.
 

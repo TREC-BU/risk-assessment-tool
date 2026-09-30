@@ -12,6 +12,9 @@ from the environment (or .env):
     RISK_SLACK_CHANNEL   channel ID where /risk works, e.g. C0123456789
     RISK_SHEET_ID        Google Sheet key
     GOOGLE_APPLICATION_CREDENTIALS   service account key (optional; gspread default otherwise)
+    RISK_DRIVE_FOLDER_ID Drive folder for the PDFs (optional; see drive.py)
+
+Each successful build also replaces that mode's PDF in Google Drive.
 """
 
 from __future__ import annotations
@@ -29,8 +32,9 @@ from typing import Callable
 
 from . import slack_format as fmt
 from .cli import ROOT, load_dotenv
+from .drive import Drive, DriveError
 from .pipeline import BuildResult, CompileError, build, typst_env
-from .sheets import Grid, Sheet, SheetFormatError, fetch
+from .sheets import Grid, Sheet, SheetFormatError, connect, fetch
 from .validate import Mode
 
 log = logging.getLogger("risktool.slack")
@@ -52,12 +56,14 @@ class BuildService:
 
     def __init__(self, client, channel: str, sheet_id: str,
                  fetch_sheet: Callable[[], Sheet],
-                 run_build: Callable[[dict[str, Grid], Mode, Path], BuildResult]):
+                 run_build: Callable[[dict[str, Grid], Mode, Path], BuildResult],
+                 publish: Callable[[Path, Mode], str] | None = None):
         self.client = client
         self.channel = channel
         self.sheet_id = sheet_id
         self.fetch_sheet = fetch_sheet
         self.run_build = run_build
+        self.publish = publish  # uploads the PDF to Drive, returns its link
         self.jobs: queue.Queue[Job] = queue.Queue()
         self.lock = threading.Lock()
         self.waiting: list[Job] = []
@@ -106,7 +112,8 @@ class BuildService:
             with tempfile.TemporaryDirectory() as tmp:
                 name = f"risk-assessment-{job.mode}.pdf"
                 result = self.run_build(sheet.grids, job.mode, Path(tmp) / name)
-                text, overflow = fmt.result(result.report, self.sheet_id, sheet.gids)
+                drive = self._publish(job, result.pdf) if result.pdf else None
+                text, overflow = fmt.result(result.report, self.sheet_id, sheet.gids, drive)
                 if result.pdf:
                     self.client.files_upload_v2(
                         channel=self.channel, thread_ts=job.ts, file=str(result.pdf),
@@ -129,6 +136,17 @@ class BuildService:
                 self._status(job, fmt.crashed(job.mode, job.user))
             except Exception:
                 log.exception("could not report the failure to Slack")
+
+    def _publish(self, job: Job, pdf: Path) -> str | None:
+        """Update the Drive copy. A failure is reported, but still posts the PDF."""
+        if not self.publish:
+            return None
+        try:
+            return fmt.published(self.publish(pdf, job.mode))
+        except Exception as exc:
+            log.exception("publishing the %s PDF to Drive failed", job.mode)
+            return fmt.publish_failed(
+                str(exc) if isinstance(exc, DriveError) else "something unexpected went wrong.")
 
 
 def describe(exc: Exception) -> str:
@@ -200,13 +218,22 @@ def main() -> None:
 
     env = os.environ
     channel, sheet_id = env["RISK_SLACK_CHANNEL"], env["RISK_SHEET_ID"]
-    credentials = env.get("GOOGLE_APPLICATION_CREDENTIALS")
+    try:
+        google = connect(env.get("GOOGLE_APPLICATION_CREDENTIALS"))
+    except FileNotFoundError as exc:
+        sys.exit(f"risktool-slack: Google key not found: {exc.filename}")
+    drive = Drive(google.http_client.session)
+
+    def publish(pdf: Path, mode: Mode) -> str:
+        folder = env.get("RISK_DRIVE_FOLDER_ID") or drive.find_folder(sheet_id)
+        return drive.publish(pdf, mode, folder)
 
     app = App(token=env["SLACK_BOT_TOKEN"])
     service = BuildService(
         app.client, channel, sheet_id,
-        fetch_sheet=lambda: fetch(sheet_id, credentials),
+        fetch_sheet=lambda: fetch(google, sheet_id),
         run_build=lambda grids, mode, out: build(grids, mode, ROOT, out),
+        publish=publish,
     )
     threading.Thread(target=service.run_forever, name="builder", daemon=True).start()
     register(app, service, channel)

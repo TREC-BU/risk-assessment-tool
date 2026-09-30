@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from risktool import slack_format as fmt
+from risktool.drive import DriveError
 from risktool.pipeline import BuildResult, CompileError
 from risktool.sheets import Sheet, SheetFormatError
 from risktool.slackbot import BuildService, register
@@ -39,11 +40,12 @@ def report(errors=(), warnings=(), mode="final"):
     return r
 
 
-def service(client, run_build=None, fetch_sheet=None):
+def service(client, run_build=None, fetch_sheet=None, publish=None):
     return BuildService(
         client, "C1", "SHEET",
         fetch_sheet=fetch_sheet or (lambda: Sheet({}, GIDS)),
         run_build=run_build or (lambda grids, mode, out: BuildResult(report(mode=mode), out)),
+        publish=publish,
     )
 
 
@@ -58,6 +60,49 @@ def test_successful_build_uploads_pdf_in_thread():
     assert upload["thread_ts"] == "100.1" and upload["filename"] == "risk-assessment-final.pdf"
     assert "Here's the PDF." in upload["initial_comment"]
     assert ":white_check_mark:" in c.of("update")[-1]["text"]
+
+
+def test_successful_build_links_the_drive_copy():
+    c, published = FakeClient(), []
+
+    def publish(pdf, mode):
+        published.append((pdf.name, mode))
+        return "https://drive/PDF1"
+
+    s = service(c, publish=publish)
+    s.submit("pdr", "U1")
+    s.run_pending()
+    assert published == [("risk-assessment-pdr.pdf", "pdr")]
+    assert "<https://drive/PDF1|The copy in Google Drive> is updated." in c.of("upload")[0]["initial_comment"]
+
+
+@pytest.mark.parametrize("exc, phrase", [
+    (DriveError("there's no 'Risk assessment PDFs' folder shared with the bot."), "no 'Risk assessment PDFs' folder"),
+    (RuntimeError("secret internals"), "something unexpected"),
+])
+def test_drive_failure_still_posts_the_pdf(exc, phrase):
+    c = FakeClient()
+
+    def publish(pdf, mode):
+        raise exc
+
+    s = service(c, publish=publish)
+    s.submit("final", "U1")
+    s.run_pending()
+    comment = c.of("upload")[0]["initial_comment"]
+    assert "Couldn't update the copy in Google Drive" in comment and phrase in comment
+    assert "secret internals" not in comment
+    assert ":white_check_mark:" in c.of("update")[-1]["text"]
+
+
+def test_invalid_build_is_not_published():
+    c, published = FakeClient(), []
+    err = Issue("Risks", "residual risk is Unacceptable", 15, "RK_011")
+    s = service(c, run_build=lambda g, m, o: BuildResult(report([err]), None),
+                publish=lambda pdf, mode: published.append(mode))
+    s.submit("final", "U1")
+    s.run_pending()
+    assert published == []
 
 
 def test_invalid_sheet_lists_problems_with_row_links():

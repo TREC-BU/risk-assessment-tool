@@ -85,15 +85,21 @@ class Sheet:
     gids: dict[str, int]
 
 
-def fetch(sheet_key: str, credentials: str | None = None) -> Sheet:
-    """Pull every tab's raw cell grid (formatted values) from Google Sheets."""
+def connect(credentials: str | None = None):
+    """A gspread client for the service account. Its scopes cover Sheets and Drive."""
     import gspread
 
-    client = (
+    return (
         gspread.service_account(filename=Path(credentials).expanduser())
         if credentials
         else gspread.service_account()
     )
+
+
+def fetch(client, sheet_key: str) -> Sheet:
+    """Pull every tab's raw cell grid (formatted values) from Google Sheets."""
+    import gspread
+
     book = client.open_by_key(sheet_key)
     grids, gids = {}, {}
     for tab in TABS:
