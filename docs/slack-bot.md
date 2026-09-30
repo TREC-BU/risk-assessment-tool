@@ -80,9 +80,39 @@ docker compose logs -f        # should end with "listening for /risk in C…"
 
 It restarts on its own after a crash or a server reboot.
 
+### 5. Automatic deploys
+
+`.github/workflows/deploy.yml` redeploys on every push to `main`. It needs SSH
+access from GitHub's runners to the server (port 22 open to the internet).
+
+Make a key used only for deploys, and allow it on the server:
+
+```sh
+ssh-keygen -t ed25519 -N '' -f deploy_key -C github-deploy
+ssh-copy-id -i deploy_key.pub server
+ssh-keyscan -t ed25519 <server host> > known_hosts
+```
+
+Add these repository secrets (**Settings → Secrets and variables → Actions**):
+
+| Secret | Value |
+| --- | --- |
+| `DEPLOY_HOST` | Server hostname or IP |
+| `DEPLOY_USER` | SSH user that owns `~/risk-assessment-tool` and can run `docker` |
+| `DEPLOY_SSH_KEY` | Contents of `deploy_key` (the private key) |
+| `DEPLOY_KNOWN_HOSTS` | Contents of `known_hosts` |
+
+Then delete the local `deploy_key` files. The server's clone must be able to
+`git fetch` on its own: clone over HTTPS if the repo is public, or add a
+read-only deploy key to the repo if it's private.
+
 ## Day to day
 
-- **Update after changing the code or template:**
+- **Update after changing the code or template:** push to `main`. The Deploy
+  workflow runs the tests, then SSHes in and runs
+  `git reset --hard origin/main && docker compose up -d --build`. Any edits made
+  directly on the server to tracked files are overwritten; `secrets/` and
+  `fonts/` are git-ignored and left alone. To deploy by hand:
   `git pull && docker compose up -d --build`
 - **Logs:** `docker compose logs --tail 100`. Full error details go here, not
   to Slack.

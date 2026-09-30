@@ -1,7 +1,7 @@
 // Terrier Ride Engineering Club technical documentation style.
 // Measured from "00 TEMPLATE.pdf": US Letter, 1in margins, Helvetica Neue
 // 10pt body, red 16pt numbered sections over a grey rule, red table headers,
-// grey centred footer. The cover title and section headings use Raleway Bold,
+// grey centred footer. The cover title, club name and section headings use Raleway Bold,
 // which isn't committed: see "Fonts" in the README.
 
 #let red = rgb("#d20000")
@@ -88,7 +88,7 @@
       #v(18pt)
       #text(font: heading-sans, 18pt, weight: "bold", fill: red, "—————————")
       #v(29pt)
-      #text(14pt, weight: "bold", organization)
+      #display(14pt, organization)
       #v(15pt)
       #institution
       #v(22pt)
