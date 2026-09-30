@@ -1,6 +1,6 @@
 # Risk Assessment Tool
 
-Builds the REC risk assessment PDF from the club's Google Sheet.
+Builds the REC risk assessment PDF from the club's Google Sheet. For motivation and instructions, see https://docs.google.com/document/d/14YtGCt6rnGp3Pjqvc9W-urmAA7cQidKDA8Vp8nCDGbk/edit?usp=sharing
 
 > [!IMPORTANT]
 > **This repo is configured for the Terrier Ride Engineering Club (TREC)
