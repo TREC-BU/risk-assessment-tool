@@ -4,7 +4,8 @@
 #   secrets/slack.env         SLACK_BOT_TOKEN, SLACK_APP_TOKEN, RISK_SLACK_CHANNEL
 #   secrets/google-key.json   the service account key
 #   fonts/                    Helvetica Neue from a Mac
-# RISK_SHEET_ID comes from the committed .env.
+# RISK_SHEET_ID comes from the committed .env. Deploy with scripts/deploy.sh,
+# which sets the RISK_COMMIT_* variables the bot announces in Slack.
 
 services:
   risk-bot:
@@ -15,6 +16,9 @@ services:
       - secrets/slack.env
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/google-key.json
+      RISK_COMMIT_SHA: ${RISK_COMMIT_SHA:-}
+      RISK_COMMIT_AUTHOR: ${RISK_COMMIT_AUTHOR:-}
+      RISK_COMMIT_MESSAGE: ${RISK_COMMIT_MESSAGE:-}
     volumes:
       - ./secrets/google-key.json:/run/secrets/google-key.json:ro
       - ./fonts:/app/fonts:ro

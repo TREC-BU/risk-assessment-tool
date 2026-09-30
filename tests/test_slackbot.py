@@ -7,7 +7,7 @@ from risktool import slack_format as fmt
 from risktool.drive import DriveError
 from risktool.pipeline import BuildResult, CompileError
 from risktool.sheets import Sheet, SheetFormatError
-from risktool.slackbot import BuildService, register
+from risktool.slackbot import BuildService, announce_version, register
 from risktool.validate import Issue, Report
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -219,6 +219,40 @@ def test_valid_command_queues_a_build():
     acks, c, s = invoke(" Final ")
     assert acks == [{}]
     assert s.jobs.qsize() == 1 and "started a *Final* build" in c.of("post")[0]["text"]
+
+
+# ---- Deploy announcement ---------------------------------------------------
+
+DEPLOY_ENV = {
+    "RISK_COMMIT_SHA": "0123456789abcdef",
+    "RISK_COMMIT_AUTHOR": "Sam <Lee>",
+    "RISK_COMMIT_MESSAGE": ("Add Drive upload\n\nReplaces the PDF\nafter each build.\n\n"
+                            "Co-Authored-By: Claude <noreply@anthropic.com>\n"),
+    "RISK_REPO_URL": "https://github.com/org/repo",
+}
+
+
+def test_deploy_is_announced_once(tmp_path):
+    c, marker = FakeClient(), tmp_path / "build" / "announced-commit"
+    announce_version(c, "C1", DEPLOY_ENV, marker)
+    text = c.of("post")[0]["text"]
+    assert text.startswith(":rocket: Updated to <https://github.com/org/repo/commit/0123456789abcdef|0123456>")
+    assert "by Sam &lt;Lee&gt;: *Add Drive upload*" in text
+    assert text.endswith("*Add Drive upload*\n> Replaces the PDF\n> after each build.")
+    # A restart of the same container doesn't repeat it.
+    announce_version(c, "C1", DEPLOY_ENV, marker)
+    assert len(c.of("post")) == 1
+
+
+def test_no_announcement_without_a_deploy(tmp_path):
+    c = FakeClient()
+    announce_version(c, "C1", {}, tmp_path / "announced-commit")
+    assert c.calls == []
+
+
+def test_announcement_without_repo_or_body():
+    text = fmt.deployed("0123456789abcdef", "Sam", "Fix typo\n", None)
+    assert text == ":rocket: Updated to `0123456` by Sam: *Fix typo*"
 
 
 # ---- End to end with the real pipeline -------------------------------------

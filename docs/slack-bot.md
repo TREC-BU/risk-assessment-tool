@@ -98,11 +98,16 @@ the Drive copy wasn't updated.
 ### 5. Start it
 
 ```sh
-docker compose up -d --build
+sh scripts/deploy.sh
 docker compose logs -f        # should end with "listening for /risk in C…"
 ```
 
 It restarts on its own after a crash or a server reboot.
+
+`scripts/deploy.sh` runs `docker compose up -d --build` and passes it the
+checked-out commit. Once the new bot is running, it posts that commit in the
+channel: hash (linked to GitHub), author and message. Restarts don't repeat
+the post. A plain `docker compose up` works too, but won't announce anything.
 
 ### 6. Automatic deploys
 
@@ -134,10 +139,11 @@ read-only deploy key to the repo if it's private.
 
 - **Update after changing the code or template:** push to `main`. The Deploy
   workflow runs the tests, then SSHes in and runs
-  `git reset --hard origin/main && docker compose up -d --build`. Any edits made
-  directly on the server to tracked files are overwritten; `secrets/` and
-  `fonts/` are git-ignored and left alone. To deploy by hand:
-  `git pull && docker compose up -d --build`
+  `git reset --hard origin/main && sh scripts/deploy.sh`. The bot posts the new
+  commit in the channel when it's back up. Any edits made directly on the
+  server to tracked files are overwritten; `secrets/` and `fonts/` are
+  git-ignored and left alone. To deploy by hand:
+  `git pull && sh scripts/deploy.sh`
 - **Logs:** `docker compose logs --tail 100`. Full error details go here, not
   to Slack.
 - **Stop:** `docker compose down`

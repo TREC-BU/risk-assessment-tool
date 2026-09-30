@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from .validate import Issue, Mode, Report
 
 MODE_NAMES = {"pdr": "PDR", "final": "Final"}
@@ -97,6 +99,21 @@ def published(link: str) -> str:
 
 def publish_failed(reason: str) -> str:
     return f":warning: Couldn't update the copy in Google Drive: {escape(reason)}"
+
+
+def deployed(sha: str, author: str, message: str, repo_url: str | None) -> str:
+    """Announcement that the bot now runs commit `sha`."""
+    ref = f"<{repo_url}/commit/{sha}|{sha[:7]}>" if repo_url else f"`{sha[:7]}`"
+    by = f" by {escape(author)}" if author else ""
+    subject, _, body = message.strip().partition("\n")
+    # Drop a closing paragraph of git trailers ("Co-Authored-By: …").
+    paragraphs = body.strip().split("\n\n")
+    if all(re.match(r"[\w-]+: ", line) for line in paragraphs[-1].splitlines()):
+        paragraphs.pop()
+    body = "\n\n".join(paragraphs)
+    lines = [f":rocket: Updated to {ref}{by}: *{escape(subject) or 'no message'}*"]
+    lines += [f">{' ' + escape(line) if line.strip() else ''}" for line in body.strip().splitlines()]
+    return "\n".join(lines)
 
 
 def failure(reason: str) -> str:

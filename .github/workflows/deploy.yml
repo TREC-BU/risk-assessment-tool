@@ -39,4 +39,4 @@ jobs:
       - name: Pull and rebuild
         run: |
           ssh "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
-            "cd risk-assessment-tool && git fetch origin main && git reset --hard origin/main && docker compose up -d --build && docker image prune -f"
+            "cd risk-assessment-tool && git fetch origin main && git reset --hard origin/main && sh scripts/deploy.sh"

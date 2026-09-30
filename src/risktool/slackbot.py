@@ -13,8 +13,12 @@ from the environment (or .env):
     RISK_SHEET_ID        Google Sheet key
     GOOGLE_APPLICATION_CREDENTIALS   service account key (optional; gspread default otherwise)
     RISK_DRIVE_FOLDER_ID Drive folder for the PDFs (optional; see drive.py)
+    RISK_COMMIT_SHA, RISK_COMMIT_AUTHOR, RISK_COMMIT_MESSAGE
+                         the deployed commit, set by scripts/deploy.sh (optional)
+    RISK_REPO_URL        GitHub repo, for the commit link (optional)
 
-Each successful build also replaces that mode's PDF in Google Drive.
+Each successful build also replaces that mode's PDF in Google Drive. After a
+deploy, the bot posts the commit it now runs.
 """
 
 from __future__ import annotations
@@ -33,11 +37,15 @@ from typing import Callable
 from . import slack_format as fmt
 from .cli import ROOT, load_dotenv
 from .drive import Drive, DriveError
-from .pipeline import BuildResult, CompileError, build, typst_env
+from .pipeline import BUILD, BuildResult, CompileError, build, typst_env
 from .sheets import Grid, Sheet, SheetFormatError, connect, fetch
 from .validate import Mode
 
 log = logging.getLogger("risktool.slack")
+
+# The last commit announced. It lives in the container, so a restart of the same
+# container stays quiet and a deploy (a new container) announces again.
+ANNOUNCED = ROOT / BUILD / "announced-commit"
 
 # The template's fonts. Without them Typst silently substitutes, so refuse to start.
 REQUIRED_FONTS = ("Helvetica Neue", "Arial", "Raleway")
@@ -193,6 +201,24 @@ def register(app, service: BuildService, channel: str) -> None:
                 raise
 
 
+def announce_version(client, channel: str, env, marker: Path = ANNOUNCED) -> None:
+    """Post the deployed commit, once. Does nothing outside a scripts/deploy.sh deploy."""
+    sha = env.get("RISK_COMMIT_SHA")
+    if not sha:
+        return
+    if marker.is_file() and marker.read_text().strip() == sha:
+        return
+    text = fmt.deployed(sha, env.get("RISK_COMMIT_AUTHOR", ""), env.get("RISK_COMMIT_MESSAGE", ""),
+                        env.get("RISK_REPO_URL"))
+    try:
+        client.chat_postMessage(channel=channel, text=text, unfurl_links=False, unfurl_media=False)
+    except Exception:
+        log.exception("could not announce commit %s", sha)
+        return
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(sha)
+
+
 def missing_fonts() -> list[str]:
     listed = subprocess.run(["typst", "fonts"], capture_output=True, text=True,
                             env=typst_env(ROOT)).stdout
@@ -237,6 +263,7 @@ def main() -> None:
     )
     threading.Thread(target=service.run_forever, name="builder", daemon=True).start()
     register(app, service, channel)
+    announce_version(app.client, channel, env)
     log.info("listening for /risk in %s", channel)
     SocketModeHandler(app, env["SLACK_APP_TOKEN"]).start()
 
