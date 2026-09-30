@@ -83,6 +83,7 @@ Never commit the key. `.gitignore` excludes the usual names.
 
 ```sh
 .venv/bin/risktool build               # Final: everything; fails on any Unacceptable residual
+.venv/bin/risktool build -O            # same, then open the PDF (macOS)
 .venv/bin/risktool build --mode pdr     # method, hazard list, initial scores
 .venv/bin/risktool check               # validate only (also takes --mode)
 ```

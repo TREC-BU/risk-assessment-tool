@@ -3,7 +3,7 @@
     risktool build [--mode pdr|final]   fetch, validate, render the PDF
     risktool check [--mode pdr|final]   fetch and validate only
 
---mode defaults to final.
+--mode defaults to final. `build --open` opens the PDF afterwards (macOS).
 
 The sheet is read from Google Sheets with a service account. Settings such as
 RISK_SHEET_ID can go in a .env file in the current directory; real
@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -59,6 +60,8 @@ def _args(argv):
         if name == "build":
             p.add_argument("-o", "--output", type=Path,
                            help="PDF path (default: build/risk-assessment-<mode>.pdf)")
+            p.add_argument("-O", "--open", action="store_true",
+                           help="open the PDF with macOS `open` once written")
     return parser.parse_args(argv)
 
 
@@ -96,7 +99,12 @@ def main(argv=None) -> int:
     if not report.ok:
         return 1
     if result.pdf:
-        print(f"wrote {result.pdf}")
+        print(f"wrote {result.pdf}", flush=True)
+        if getattr(args, "open", False):
+            try:
+                subprocess.run(["open", str(result.pdf)], check=True)
+            except (FileNotFoundError, subprocess.CalledProcessError):
+                print("risktool: couldn't open the PDF (--open needs macOS `open`)", file=sys.stderr)
     return 0
 
 
