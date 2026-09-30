@@ -149,7 +149,7 @@ def invoke(text, channel="C1"):
 
 
 def test_help_is_private():
-    acks, c, _ = invoke("")
+    acks, c, _ = invoke("help")
     assert acks[0]["response_type"] == "ephemeral" and "/risk final" in acks[0]["text"]
     assert c.calls == []
 
@@ -162,6 +162,12 @@ def test_unknown_option():
 def test_wrong_channel_is_refused_privately():
     acks, c, _ = invoke("final", channel="C9")
     assert "only works in <#C1>" in acks[0]["text"] and c.calls == []
+
+
+def test_bare_command_builds_final():
+    acks, c, s = invoke("")
+    assert acks == [{}]
+    assert s.jobs.qsize() == 1 and "started a *Final* build" in c.of("post")[0]["text"]
 
 
 def test_valid_command_queues_a_build():

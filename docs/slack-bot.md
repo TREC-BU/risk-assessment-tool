@@ -4,7 +4,7 @@ Lets anyone in one Slack channel build the risk assessment PDF from the live
 Google Sheet. Nobody needs anything installed on their own computer.
 
 - `/risk pdr` builds the Preliminary Design Review document.
-- `/risk final` builds the complete document.
+- `/risk` or `/risk final` builds the complete document.
 - `/risk help` shows the commands (only to the person who asked).
 
 The bot posts a status message, edits it as the build runs, and replies in its

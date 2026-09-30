@@ -1,7 +1,9 @@
 """risktool — build the risk assessment PDF from the Google Sheet.
 
-    risktool build --mode pdr|final     fetch, validate, render the PDF
-    risktool check --mode pdr|final     fetch and validate only
+    risktool build [--mode pdr|final]   fetch, validate, render the PDF
+    risktool check [--mode pdr|final]   fetch and validate only
+
+--mode defaults to final.
 
 The sheet is read from Google Sheets with a service account. Settings such as
 RISK_SHEET_ID can go in a .env file in the current directory; real
@@ -43,7 +45,8 @@ def _args(argv):
     sub = parser.add_subparsers(dest="command", required=True)
     for name, help in (("build", "validate and render the PDF"), ("check", "validate only")):
         p = sub.add_parser(name, help=help)
-        p.add_argument("--mode", choices=("pdr", "final"), required=True)
+        p.add_argument("--mode", choices=("pdr", "final"), default="final",
+                       help="document to build (default: final)")
         p.add_argument("--sheet", default=os.environ.get("RISK_SHEET_ID"),
                        help="Google Sheet key (default: $RISK_SHEET_ID, also read from .env)")
         p.add_argument("--credentials", default=os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"),

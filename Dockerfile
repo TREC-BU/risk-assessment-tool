@@ -30,7 +30,7 @@ WORKDIR /app
 COPY pyproject.toml ./
 COPY src ./src
 RUN pip install --no-cache-dir '.[bot]'
-COPY risk-config.typ template.typ risk-assessment.typ ./
+COPY risk-config.typ template.typ components.typ risk-assessment.typ ./
 
 RUN useradd --create-home bot && mkdir -p /app/build /app/fonts && chown bot /app/build
 USER bot

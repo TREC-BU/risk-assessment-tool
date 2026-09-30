@@ -1,4 +1,4 @@
-"""Slack bot: `/risk pdr|final` in one channel builds the PDF from the live sheet.
+"""Slack bot: `/risk [pdr|final]` in one channel builds the PDF from the live sheet.
 
 Each build posts a status message in the channel, edits it as the build
 progresses, and replies in its thread with the PDF or the problems to fix.
@@ -156,9 +156,9 @@ def register(app, service: BuildService, channel: str) -> None:
 
     @app.command("/risk")
     def risk(ack, command, respond):
-        arg = command.get("text", "").strip().lower()
+        arg = command.get("text", "").strip().lower() or "final"
         if arg not in ("pdr", "final"):
-            prefix = "" if arg in ("", "help") else f"I don't know `/risk {fmt.escape(arg)}`.\n\n"
+            prefix = "" if arg == "help" else f"I don't know `/risk {fmt.escape(arg)}`.\n\n"
             ack(response_type="ephemeral", text=prefix + fmt.HELP)
             return
         if command["channel_id"] != channel:

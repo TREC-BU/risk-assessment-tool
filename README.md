@@ -14,7 +14,7 @@ Builds the REC risk assessment PDF from the club's Google Sheet.
 > - **Fonts.** None are committed. Helvetica Neue ships with macOS and isn't
 >   redistributable.
 > - **TREC-specific content.** This includes the method (scales, matrix,
->   bands, document prefixes, scope text) in `risk-config.typ` and the club's
+>   bands, document prefixes) in `risk-config.typ` and the club's
 >   document style in `template.typ`.
 >
 > To adapt it for another team you'd need to supply all of the above and
@@ -30,9 +30,10 @@ risk-config.typ ──typst eval──┘   (scales, matrix, bands: defined once
 
 | File | Holds |
 | --- | --- |
-| `risk-config.typ` | The method: 1–5 scales, 5 × 5 acceptability matrix, bands, `acceptable-max`, mitigation types, `design_ref` prefixes, scope and limits text, cover text. |
+| `risk-config.typ` | The method: 1–5 scales, 5 × 5 acceptability matrix, bands, `acceptable-max`, mitigation types, `design_ref` prefixes, cover text. |
 | `template.typ` | Club documentation style, measured from `00 TEMPLATE.pdf`. |
-| `risk-assessment.typ` | The document. Reads `build/risk.json`. |
+| `components.typ` | Loads `build/risk.json`; table cells, risk matrices and document setup used by the document. |
+| `risk-assessment.typ` | The document content. |
 | `src/risktool/` | Sheet reader, models, validator, CLI. |
 | `examples/sample-sheet.json` | Made-up drop tower data in the sheet's layout, for offline builds. |
 
@@ -81,9 +82,9 @@ Never commit the key. `.gitignore` excludes the usual names.
 ## Use
 
 ```sh
+.venv/bin/risktool build               # Final: everything; fails on any Unacceptable residual
 .venv/bin/risktool build --mode pdr     # method, hazard list, initial scores
-.venv/bin/risktool build --mode final   # everything; fails on any Unacceptable residual
-.venv/bin/risktool check --mode final   # validate only
+.venv/bin/risktool check               # validate only (also takes --mode)
 ```
 
 The PDF goes to `build/risk-assessment-<mode>.pdf`. Each fetch is cached in
@@ -92,7 +93,7 @@ without the network, or `--from examples/sample-sheet.json` to try it out.
 
 ## Slack bot
 
-Team members can build the PDF from Slack with `/risk pdr` or `/risk final`;
+Team members can build the PDF from Slack with `/risk` (Final) or `/risk pdr`;
 the bot runs in Docker on the server. Setup and operation:
 [docs/slack-bot.md](docs/slack-bot.md).
 

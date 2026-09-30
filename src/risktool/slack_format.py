@@ -11,7 +11,7 @@ MAX_LINES = 15
 
 HELP = """*Risk assessment builder*
 • `/risk pdr` builds the Preliminary Design Review document: method, hazards and initial risk scores.
-• `/risk final` builds the complete document. It won't build while any risk is still Unacceptable.
+• `/risk` or `/risk final` builds the complete document. It won't build while any risk is still Unacceptable.
 Each build reads the Google Sheet as it is right now. If something needs fixing, the bot lists it with a link to the row."""
 
 

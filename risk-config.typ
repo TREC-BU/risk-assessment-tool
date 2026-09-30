@@ -86,10 +86,6 @@
   document-prefixes: (
     MSD: "Mechanical & Structural Design",
   ),
-
-  // Text for the Method section. Empty prints a TODO marker.
-  scope: [],
-  limits: [],
 )
 
 #metadata(config) <risk-config>
