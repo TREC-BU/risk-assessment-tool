@@ -52,7 +52,7 @@ def test_falls_back_to_the_only_visible_folder():
 
 
 @pytest.mark.parametrize("folders, phrase", [
-    ([], "no 'Risk assessment PDFs' folder"),
+    ([], "no 'published risk assessment' folder"),
     ([{"id": "F1", "parents": ["X"]}, {"id": "F2", "parents": ["Y"]}], "RISK_DRIVE_FOLDER_ID"),
 ])
 def test_folder_problems(folders, phrase):

@@ -19,7 +19,7 @@ from pathlib import Path
 
 from .validate import Mode
 
-FOLDER_NAME = "Risk assessment PDFs"
+FOLDER_NAME = "published risk assessment"
 MODE_NAMES = {"pdr": "PDR", "final": "Final"}
 
 API = "https://www.googleapis.com/drive/v3/files"

@@ -77,7 +77,7 @@ def test_successful_build_links_the_drive_copy():
 
 
 @pytest.mark.parametrize("exc, phrase", [
-    (DriveError("there's no 'Risk assessment PDFs' folder shared with the bot."), "no 'Risk assessment PDFs' folder"),
+    (DriveError("there's no 'published risk assessment' folder shared with the bot."), "no 'published risk assessment' folder"),
     (RuntimeError("secret internals"), "something unexpected"),
 ])
 def test_drive_failure_still_posts_the_pdf(exc, phrase):

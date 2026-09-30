@@ -77,7 +77,7 @@ missing font can't silently change the layout.
 ### 4. Google Drive copy
 
 Successful builds replace `Risk assessment (PDR).pdf` or
-`Risk assessment (Final).pdf` in a folder named **Risk assessment PDFs**,
+`Risk assessment (Final).pdf` in a folder named **published risk assessment**,
 kept in the same folder as the sheet. The links never change, and Drive keeps
 each earlier build under **Manage versions**.
 
@@ -152,5 +152,5 @@ read-only deploy key to the repo if it's private.
 | "the sheet has no tab named '…'" | A tab was renamed; the four tabs must be Hazards, Situations, Mitigations, Risks. |
 | "the PDF compiler failed" | Check the logs; usually a template edit that doesn't compile. |
 | `/risk` gives "dispatch_failed" | The bot isn't running: `docker compose ps`, then check the logs. |
-| "no 'Risk assessment PDFs' folder shared with the bot" | Share the folder with the service account as Editor, or set `RISK_DRIVE_FOLDER_ID`. |
+| "no 'published risk assessment' folder shared with the bot" | Share the folder with the service account as Editor, or set `RISK_DRIVE_FOLDER_ID`. |
 | "can't create files in a My Drive folder" | Upload a PDF with the name it gives to the folder once (see setup step 4). |
