@@ -10,14 +10,14 @@
 // prescribes its own scales or matrix, change them here — no code changes.
 
 #let config = (
-  // Cover page and footer. `status` is chosen by build mode.
+  // Cover page and footer.
   document: (
     title: "RISK ASSESSMENT",
     subtitle: "Technical Documentation",
     organization: "Terrier Ride Engineering Club",
     institution: "Boston University",
     event: "Ride Engineering Competition",
-    status: (pdr: "Preliminary Design Review", final: "Final"),
+    status: "In Progress",
   ),
 
   // 1–5 scales. Keys are the level as a string so the table reads top-down.
@@ -69,7 +69,7 @@
     "1": ("A", "A", "A", "A", "J"),
   ),
 
-  // Highest band a residual risk may sit in for a Final build.
+  // Highest acceptable band for a residual risk; anything above is a warning.
   acceptable-max: "J",
 
   // Mitigation hierarchy, most to least effective. Only types with
@@ -82,7 +82,8 @@
   ),
 
   // Prefixes allowed in design_ref (the part before the first "_") and the
-  // document each one points to.
+  // document each one points to. Only the validator reads these; the
+  // document lists its sources under "Information for Risk Assessment".
   document-prefixes: (
     MSD: "Mechanical & Structural Design",
   ),

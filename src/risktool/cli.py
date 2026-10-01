@@ -1,10 +1,10 @@
 """risktool — build the risk assessment PDF from the Google Sheet.
 
-    risktool build [--mode pdr|final]   fetch, validate, render the PDF
-    risktool check [--mode pdr|final]   fetch and validate only
+    risktool build   fetch, validate, render the PDF
+    risktool check   fetch and validate only
 
---mode defaults to final. `build --open` opens the PDF afterwards (macOS);
-`build --publish` also replaces the copy in Google Drive.
+`build --open` opens the PDF afterwards (macOS); `build --publish` also
+replaces the copy in Google Drive.
 
 The sheet is read from Google Sheets with a service account. Settings such as
 RISK_SHEET_ID can go in a .env file in the current directory; real
@@ -48,8 +48,6 @@ def _args(argv):
     sub = parser.add_subparsers(dest="command", required=True)
     for name, help in (("build", "validate and render the PDF"), ("check", "validate only")):
         p = sub.add_parser(name, help=help)
-        p.add_argument("--mode", choices=("pdr", "final"), default="final",
-                       help="document to build (default: final)")
         p.add_argument("--sheet", default=os.environ.get("RISK_SHEET_ID"),
                        help="Google Sheet key (default: $RISK_SHEET_ID, also read from .env)")
         p.add_argument("--credentials", default=os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"),
@@ -61,11 +59,11 @@ def _args(argv):
                        help="project directory holding the .typ files (default: cwd)")
         if name == "build":
             p.add_argument("-o", "--output", type=Path,
-                           help="PDF path (default: build/risk-assessment-<mode>.pdf)")
+                           help="PDF path (default: build/risk-assessment.pdf)")
             p.add_argument("-O", "--open", action="store_true",
                            help="open the PDF with macOS `open` once written")
             p.add_argument("--publish", action="store_true",
-                           help="replace this mode's PDF in the Drive folder next to the sheet")
+                           help="replace the PDF in the Drive folder next to the sheet")
     return parser.parse_args(argv)
 
 
@@ -94,17 +92,18 @@ def main(argv=None) -> int:
         save_grids(grids, root / BUILD / "sheet-cache.json")
 
     try:
-        result = build(grids, args.mode, root, getattr(args, "output", None),
+        result = build(grids, root, getattr(args, "output", None),
                        render=args.command == "build")
     except CompileError as exc:
         print(exc, file=sys.stderr)
         return 1
     report = result.report
-    for w in report.warnings:
-        print(f"warning: {w}", file=sys.stderr)
-    for e in report.errors:
-        print(f"error: {e}", file=sys.stderr)
-    print(f"{len(report.errors)} error(s), {len(report.warnings)} warning(s)", file=sys.stderr)
+    for level, issues in (("info", report.info), ("warning", report.warnings),
+                          ("error", report.errors)):
+        for i in issues:
+            print(f"{level}: {i}", file=sys.stderr)
+    print(f"{len(report.errors)} error(s), {len(report.warnings)} warning(s), "
+          f"{len(report.info)} info", file=sys.stderr)
     if not report.ok:
         return 1
     if result.pdf:
@@ -118,7 +117,7 @@ def main(argv=None) -> int:
         drive = Drive(client.http_client.session)
         try:
             folder = os.environ.get("RISK_DRIVE_FOLDER_ID") or drive.find_folder(args.sheet)
-            print(f"published {drive.publish(result.pdf, args.mode, folder)}")
+            print(f"published {drive.publish(result.pdf, folder)}")
         except DriveError as exc:
             print(f"risktool: couldn't publish to Drive: {exc}", file=sys.stderr)
             return 1

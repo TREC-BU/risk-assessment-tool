@@ -64,10 +64,10 @@ def test_replaces_the_existing_file(tmp_path):
     pdf = tmp_path / "x.pdf"
     pdf.write_bytes(b"%PDF new")
     s = FakeSession([
-        (("GET", "/files", "Risk assessment (Final).pdf"), Resp(200, {"files": [{"id": "PDF1"}]})),
+        (("GET", "/files", "Risk assessment.pdf"), Resp(200, {"files": [{"id": "PDF1"}]})),
         (("PATCH", "/files/PDF1", ""), Resp(200, {"webViewLink": "https://drive/PDF1"})),
     ])
-    assert Drive(s).publish(pdf, "final", "F1") == "https://drive/PDF1"
+    assert Drive(s).publish(pdf, "F1") == "https://drive/PDF1"
     method, url, params, kw = s.calls[-1]
     assert "/upload/" in url and params["uploadType"] == "media"
     assert kw["data"] == b"%PDF new"
@@ -78,10 +78,10 @@ def test_creates_the_file_when_missing(tmp_path):
     pdf = tmp_path / "x.pdf"
     pdf.write_bytes(b"%PDF")
     s = FakeSession([
-        (("GET", "/files", "(PDR)"), Resp(200, {"files": []})),
+        (("GET", "/files", "Risk assessment.pdf"), Resp(200, {"files": []})),
         (("POST", "/files", ""), Resp(200, {"webViewLink": "https://drive/new"})),
     ])
-    assert Drive(s).publish(pdf, "pdr", "F1") == "https://drive/new"
+    assert Drive(s).publish(pdf, "F1") == "https://drive/new"
     body = s.calls[-1][3]["data"]
     assert b'"parents": ["F1"]' in body and b"%PDF" in body
 
@@ -90,11 +90,11 @@ def test_my_drive_create_explains_the_placeholder(tmp_path):
     pdf = tmp_path / "x.pdf"
     pdf.write_bytes(b"%PDF")
     s = FakeSession([
-        (("GET", "/files", "(PDR)"), Resp(200, {"files": []})),
+        (("GET", "/files", "Risk assessment.pdf"), Resp(200, {"files": []})),
         (("POST", "/files", ""), quota_error()),
     ])
-    with pytest.raises(DriveError, match=r"Upload any PDF named 'Risk assessment \(PDR\)\.pdf'"):
-        Drive(s).publish(pdf, "pdr", "F1")
+    with pytest.raises(DriveError, match=r"Upload any PDF named 'Risk assessment\.pdf'"):
+        Drive(s).publish(pdf, "F1")
 
 
 def test_other_errors_name_the_status():

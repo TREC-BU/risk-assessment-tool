@@ -40,20 +40,101 @@
 
 #show: setup
 
-= Method & Scope
+= Overview & Prerequisites
 
+This Risk Assessment is in compliance with the Standard Practice for Risk
+Assessment for Amusement Rides and Devices as defined by ASTM F3598.
+
+== Process
 #todo()
-
-== Typical Tasks by Person
-#task-table(persons, use-cases)
 
 == Scope
-#todo()
+This Risk Assessment covers the interaction between persons and the amusement
+ride.
 
-== Limits
-#todo()
+This document is applicable to the phase of operation after ride
+commissioning, but before permanent closure. It does not apply to ride
+construction, or deconstruction. Routine disassembly and reassembly are
+excluded, as they are not expected based on the prerequisites provided during
+the risk assessment process.
 
-== Severity Scale
+Additionally, this document covers the electrical and mechanical interfaces
+with the world outside the amusement ride, including electrical connections
+and mechanical mounting solutions.
+
+== Definitions
+*Persons*: All human persons, as well as the candy riders as defined in the
+Ride Engineering Competition Rule Book.
+
+== Risk Assessment Responsible Party
+The Risk Assessment Responsible Party, hereafter referred to as "RARP",
+consists of the following individuals. Their competencies, as defined by ASTM
+F3598, are listed below their name.
+
+#set enum(numbering: "1.a.")
+
+// One entry per RARP member, competencies nested below.
++ Jackson Justus
+  + Risk Assessment Process
+  + Technical Aspects of the Design
+  + Operational Aspects
+  + Evacuation Aspects
+
+== Information for Risk Assessment
+The information for the risk assessment consists of the following:
+
++ Theory of Operations
++ Design Documentation
+  + Mechanical & Structural Design
+  + Control Systems Design
+  + ASTM F2291 Compliance
++ Acceptance Documentation
+  + Factory Acceptance Tests
++ Service Plan
+
+== Tasks
+#task-table(persons, use-cases)
+
+= Hazard Identification
+
+== Hazards
+#lead[#todo()]
+
+#doc-table(
+  columns: (52pt, 120pt, 1fr),
+  header: ([ID], [Category], [Hazard]),
+  ..for hz in data.hazards { ([*#hz.hazard_id*], [#hz.category], [#hz.hazard]) },
+)
+
+== Hazardous Situations
+#lead[#todo()]
+
+#doc-table(
+  columns: (52pt, 72pt, 78pt, 44pt, 1fr),
+  header: ([ID], [Persons], [Ride phase], [Misuse], [Situation]),
+  ..for s in data.situations {
+    ([*#s.situation_id*], [#s.persons], [#s.ride_phase],
+     if s.misuse [Yes] else [No], [#s.situation])
+  },
+)
+
+== Harmful Events
+#lead[#todo()]
+
+#doc-table(
+  columns: (46pt, 52pt, 52pt, 1fr),
+  header: ([ID], [Hazard], [Situation], [Harmful event]),
+  ..for r in data.risks {
+    ([*#r.risk_id*], [#r.hazard_id], [#r.situation_id], [#r.event])
+  },
+)
+
+= Risk Estimation & Evaluation
+
+== Risk Estimation
+#lead[#todo()]
+
+=== Severity Scale
 #doc-table(
   columns: (38pt, 68pt, 110pt, 1fr),
   header: ([Level], [Qualifier], [Description], [Example]),
@@ -63,7 +144,7 @@
   },
 )
 
-== Probability Scale
+=== Probability Scale
 #doc-table(
   columns: (38pt, 68pt, 110pt, 1fr),
   header: ([Level], [Qualifier], [Frequency], [Typical basis]),
@@ -73,7 +154,7 @@
   },
 )
 
-== Risk Matrix
+== Risk Evaluation
 #lead[#todo()]
 
 #grid(
@@ -93,124 +174,98 @@
 
 #todo()
 
-== Mitigation Hierarchy
-#lead[#todo()]
-
-#doc-table(
-  columns: (1fr, 120pt),
-  header: ([Type], [May lower severity]),
-  ..for t in config.mitigation-types {
-    ([#t.name], if t.lowers-severity [Yes] else [No])
-  },
-)
-
-= Hazard List
-#lead[#todo()]
-
-#doc-table(
-  columns: (52pt, 120pt, 1fr),
-  header: ([ID], [Category], [Hazard]),
-  ..for hz in data.hazards { ([*#hz.hazard_id*], [#hz.category], [#hz.hazard]) },
-)
-
-#if final [
-  = Hazardous Situations & Coverage
-
-  == Hazardous Situations
-  #lead[#todo()]
-
-  #doc-table(
-    columns: (52pt, 72pt, 78pt, 44pt, 1fr),
-    header: ([ID], [Persons], [Ride phase], [Misuse], [Situation]),
-    ..for s in data.situations {
-      ([*#s.situation_id*], [#s.persons], [#s.ride_phase],
-       if s.misuse [Yes] else [No], [#s.situation])
-    },
-  )
-
-  == Coverage Grid
-  #lead[#todo()]
-
-  #let chunk = 9
-  #for start in range(0, data.situations.len(), step: chunk) {
-    let cols = data.situations.slice(start, calc.min(start + chunk, data.situations.len()))
-    doc-table(
-      columns: (52pt,) + (1fr,) * cols.len(),
-      align: center + horizon,
-      header: ([Hazard],) + cols.map(s => [#s.situation_id \ #text(7.5pt, weight: "regular", s.persons)]),
-      ..for hz in data.hazards {
-        ([*#hz.hazard_id*],)
-        for s in cols {
-          let here = data.risks.filter(r => r.hazard_id == hz.hazard_id and r.situation_id == s.situation_id)
-          (stack(spacing: 2pt, ..here.map(r => box(
-            fill: rgb(bands.at(r.initial.band).color), inset: (x: 2pt, y: 2pt), radius: 1pt,
-            text(7pt)[#r.risk_id *#bands.at(r.initial.band).label*],
-          ))),)
-        }
-      },
-    )
-  }
-]
-
-= Initial Risk Assessment
-#todo()
-
 #for hz in data.hazards {
   let risks = data.risks.filter(r => r.hazard_id == hz.hazard_id)
   if risks.len() == 0 { continue }
-  [== #hz.hazard_id — #hz.hazard]
+  [=== #hz.hazard_id — #hz.hazard]
   doc-table(
-    columns: (46pt, 118pt, 1fr, 20pt, 20pt, 30pt),
+    columns: (44pt, 1fr, 18pt, 18pt, 26pt, 62pt, 18pt, 18pt, 26pt),
     header: table.header(
-      th[ID], th[Situation], th[Event],
-      th(align: center)[P], th(align: center)[S], th(align: center)[Risk],
+      th(rowspan: 2)[ID], th(rowspan: 2)[Harmful event],
+      th(colspan: 3, align: center)[Initial], th(rowspan: 2)[Mitigations],
+      th(colspan: 3, align: center)[Residual],
+      ..([P], [S], [Risk], [P], [S], [Risk]).map(x => th(align: center, x)),
     ),
     ..for r in risks {
+      let just(pairs) = pairs.map(((k, v, t)) => [*#k#v:* #if t != "" { t } else { dash }]).join(h(1em))
       (
-        table.cell(rowspan: 2, align: top)[*#r.risk_id*],
-        small(situation-label(r.situation_id)),
+        table.cell(rowspan: 2, align: top, anchor("risk", r.risk_id)),
         [#r.event],
-        table.cell(align: center)[#r.initial.p],
-        table.cell(align: center)[#r.initial.s],
+        table.cell(align: center)[#r.initial.p], table.cell(align: center)[#r.initial.s],
         band-cell(r.initial.band),
-        table.cell(colspan: 5, small[
-          *P#r.initial.p:* #if r.p0_justification != "" { r.p0_justification } else { dash }
-          #h(1em) *S#r.initial.s:* #if r.s0_justification != "" { r.s0_justification } else { dash }
+        small(refs("mitigation", r.mitigations)),
+        table.cell(align: center)[#r.residual.p], table.cell(align: center)[#r.residual.s],
+        band-cell(r.residual.band),
+        table.cell(colspan: 8, small[
+          _Initial_ #h(0.5em) #just((("P", r.initial.p, r.p0_justification), ("S", r.initial.s, r.s0_justification))) \
+          _Residual_ #h(0.5em) #if r.residual.assessed {
+            just((("P", r.residual.p, r.p1_justification), ("S", r.residual.s, r.s1_justification)))
+          } else [_Not mitigated; initial scores carried forward._]
         ]),
       )
     },
   )
 }
 
-#if final [
-  = Mitigations
-  #doc-table(
-    columns: (44pt, 80pt, 1fr, 54pt, 84pt, 52pt),
-    header: ([ID], [Type], [Mitigation], [Reduces], [Implemented in], [Risks]),
-    ..for m in data.mitigations {
-      ([*#m.mitigation_id*], [#m.type], [#m.mitigation],
-       table.cell(align: center, m.reduces.join(", ")),
-       small(if m.implemented_in != "" { m.implemented_in } else { dash }),
-       small(ids(m.risks)))
+= Risk Mitigation
+#lead[#todo()]
+
+#for m in data.mitigations {
+  [#heading(level: 3)[#m.mitigation_id — #m.mitigation]#label("mitigation-" + m.mitigation_id)]
+  block(breakable: false, table(
+    columns: (110pt, 1fr),
+    th[Type], [#m.type],
+    th[Reduces], [#m.reduces.join(", ")],
+    th[Implemented in], [#if m.implemented_in != "" { m.implemented_in } else { dash }],
+    th[Design references], ids(m.design_ref),
+    th[Verification (FAT)], ids(m.fat_ref),
+    th[Harmful events], refs("risk", m.risks),
+  ))
+}
+
+= Results
+
+== Coverage Grid
+#lead[#todo()]
+
+#let chunk = 9
+#for start in range(0, data.situations.len(), step: chunk) {
+  let cols = data.situations.slice(start, calc.min(start + chunk, data.situations.len()))
+  doc-table(
+    columns: (52pt,) + (1fr,) * cols.len(),
+    align: center + horizon,
+    header: ([Hazard],) + cols.map(s => [#s.situation_id \ #text(7.5pt, weight: "regular", s.persons)]),
+    ..for hz in data.hazards {
+      ([*#hz.hazard_id*],)
+      for s in cols {
+        let here = data.risks.filter(r => r.hazard_id == hz.hazard_id and r.situation_id == s.situation_id)
+        (stack(spacing: 2pt, ..here.map(r => box(
+          fill: rgb(bands.at(r.initial.band).color), inset: (x: 2pt, y: 2pt), radius: 1pt,
+          text(7pt)[#r.risk_id *#bands.at(r.initial.band).label*],
+        ))),)
+      }
     },
   )
+}
 
-  = Residual Risk
+== Risk Matrices
+#lead[#todo()]
 
-  == Risk Matrices
-  #lead[#todo()]
+#grid(
+  columns: (1fr, 1fr),
+  align: center,
+  [*Initial* \ #v(4pt) #count-matrix(data.risks.map(r => r.initial))],
+  [*Residual* \ #v(4pt) #count-matrix(data.risks.map(r => r.residual))],
+)
 
-  #grid(
-    columns: (1fr, 1fr),
-    align: center,
-    [*Initial* \ #v(4pt) #count-matrix(data.risks.map(r => r.initial))],
-    [*Residual* \ #v(4pt) #count-matrix(data.risks.map(r => r.residual))],
-  )
+== Residual Risk Table
+#lead[#todo()]
 
-  == Residual Risk Table
-  #lead[#todo()]
-
-  #doc-table(
+#let justified = data.risks.filter(r => bands.at(r.residual.band).justify)
+#if justified.len() == 0 [
+  No residual risks require justification.
+] else {
+  doc-table(
     columns: (46pt, 60pt, 20pt, 20pt, 26pt, 20pt, 20pt, 26pt, 1fr),
     header: table.header(
       th(rowspan: 2)[ID], th(rowspan: 2)[Mitigations],
@@ -218,12 +273,12 @@
       th(rowspan: 2)[Justification],
       ..([P], [S], [Risk], [P], [S], [Risk]).map(x => th(align: center, x)),
     ),
-    ..for r in data.risks {
+    ..for r in justified {
       let just = (("P", r.residual.p, r.p1_justification), ("S", r.residual.s, r.s1_justification))
         .filter(((_, _, t)) => t != "")
         .map(((k, v, t)) => [*#k#v:* #t])
       (
-        [*#r.risk_id*], small(ids(r.mitigations)),
+        strong(ref-to("risk", r.risk_id)), small(refs("mitigation", r.mitigations)),
         table.cell(align: center)[#r.initial.p], table.cell(align: center)[#r.initial.s],
         band-cell(r.initial.band),
         table.cell(align: center)[#r.residual.p], table.cell(align: center)[#r.residual.s],
@@ -235,31 +290,4 @@
       )
     },
   )
-
-  = Traceability
-  #todo()
-
-  == Document References
-  #doc-table(
-    columns: (60pt, 1fr),
-    header: ([Prefix], [Document]),
-    ..for (k, v) in config.document-prefixes { ([*#k*], [#v]) },
-  )
-
-  == Traceability Matrix
-  #doc-table(
-    columns: (46pt, 58pt, 72pt, 1fr, 90pt),
-    header: ([Risk], [Mitigation], [Type], [Design reference], [FAT reference]),
-    ..for r in data.risks {
-      if r.mitigations.len() == 0 {
-        ([*#r.risk_id*], table.cell(colspan: 4, small[No mitigations.]))
-      } else {
-        for (i, mid) in r.mitigations.enumerate() {
-          let m = mitigations.at(mid)
-          if i == 0 { (table.cell(rowspan: r.mitigations.len(), align: top)[*#r.risk_id*],) }
-          ([#mid], small(m.type), small(ids(m.design_ref)), small(ids(m.fat_ref)))
-        }
-      }
-    },
-  )
-]
+}

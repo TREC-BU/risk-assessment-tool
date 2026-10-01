@@ -3,15 +3,15 @@
 Lets anyone in one Slack channel build the risk assessment PDF from the live
 Google Sheet. Nobody needs anything installed on their own computer.
 
-- `/risk pdr` builds the Preliminary Design Review document.
-- `/risk` or `/risk final` builds the complete document.
+- `/risk` builds the document.
 - `/risk help` shows the commands (only to the person who asked).
 
 The bot posts a status message, edits it as the build runs, and replies in its
-thread with the PDF or with the problems to fix. Each problem links to its row
-in the sheet. Builds run one at a time; a second request waits and says so.
+thread with the PDF or with the errors to fix. Errors, warnings and info each
+link to their row in the sheet; only errors stop the build. Builds run one at
+a time; a second request waits and says so.
 
-Each successful build also replaces that mode's PDF in the Google Drive folder
+Each successful build also replaces the PDF in the Google Drive folder
 next to the sheet, and the thread links to it.
 
 The bot runs on the server in Docker and connects out to Slack (Socket Mode),
@@ -76,17 +76,17 @@ missing font can't silently change the layout.
 
 ### 4. Google Drive copy
 
-Successful builds replace `Risk assessment (PDR).pdf` or
-`Risk assessment (Final).pdf` in a folder named **published risk assessment**,
-kept in the same folder as the sheet. The links never change, and Drive keeps
+Successful builds replace `Risk assessment.pdf` in a folder named
+**published risk assessment**, kept in the same folder as the sheet. The link
+never changes, and Drive keeps
 each earlier build under **Manage versions**.
 
 1. Enable the Google Drive API in the service account's Cloud project.
 2. Create the folder and share it with the service account's email as
    **Editor**.
 3. If the folder is in someone's My Drive (not a Shared Drive), upload any PDF
-   under each of the two names once. The service account has no Drive storage
-   of its own, so it can replace these files but can't create them. In a
+   under that name once. The service account has no Drive storage
+   of its own, so it can replace this file but can't create them. In a
    Shared Drive it creates them itself.
 
 To use a different folder, put its ID (the part of the folder URL after

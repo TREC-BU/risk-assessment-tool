@@ -34,17 +34,15 @@ class FakeClient:
         return [kw for k, kw in self.calls if k == kind]
 
 
-def report(errors=(), warnings=(), mode="final"):
-    r = Report(mode)
-    r.errors, r.warnings = list(errors), list(warnings)
-    return r
+def report(errors=(), warnings=(), info=()):
+    return Report(list(errors), list(warnings), list(info))
 
 
 def service(client, run_build=None, fetch_sheet=None, publish=None):
     return BuildService(
         client, "C1", "SHEET",
         fetch_sheet=fetch_sheet or (lambda: Sheet({}, GIDS)),
-        run_build=run_build or (lambda grids, mode, out: BuildResult(report(mode=mode), out)),
+        run_build=run_build or (lambda grids, out: BuildResult(report(), out)),
         publish=publish,
     )
 
@@ -52,12 +50,12 @@ def service(client, run_build=None, fetch_sheet=None, publish=None):
 def test_successful_build_uploads_pdf_in_thread():
     c = FakeClient()
     s = service(c)
-    s.submit("final", "U1")
+    s.submit("U1")
     s.run_pending()
     post = c.of("post")[0]
-    assert "<@U1> started a *Final* build" in post["text"]
+    assert "<@U1> started a build" in post["text"]
     upload = c.of("upload")[0]
-    assert upload["thread_ts"] == "100.1" and upload["filename"] == "risk-assessment-final.pdf"
+    assert upload["thread_ts"] == "100.1" and upload["filename"] == "risk-assessment.pdf"
     assert "Here's the PDF." in upload["initial_comment"]
     assert ":white_check_mark:" in c.of("update")[-1]["text"]
 
@@ -65,14 +63,14 @@ def test_successful_build_uploads_pdf_in_thread():
 def test_successful_build_links_the_drive_copy():
     c, published = FakeClient(), []
 
-    def publish(pdf, mode):
-        published.append((pdf.name, mode))
+    def publish(pdf):
+        published.append(pdf.name)
         return "https://drive/PDF1"
 
     s = service(c, publish=publish)
-    s.submit("pdr", "U1")
+    s.submit("U1")
     s.run_pending()
-    assert published == [("risk-assessment-pdr.pdf", "pdr")]
+    assert published == ["risk-assessment.pdf"]
     assert "<https://drive/PDF1|The copy in Google Drive> is updated." in c.of("upload")[0]["initial_comment"]
 
 
@@ -83,11 +81,11 @@ def test_successful_build_links_the_drive_copy():
 def test_drive_failure_still_posts_the_pdf(exc, phrase):
     c = FakeClient()
 
-    def publish(pdf, mode):
+    def publish(pdf):
         raise exc
 
     s = service(c, publish=publish)
-    s.submit("final", "U1")
+    s.submit("U1")
     s.run_pending()
     comment = c.of("upload")[0]["initial_comment"]
     assert "Couldn't update the copy in Google Drive" in comment and phrase in comment
@@ -97,36 +95,48 @@ def test_drive_failure_still_posts_the_pdf(exc, phrase):
 
 def test_invalid_build_is_not_published():
     c, published = FakeClient(), []
-    err = Issue("Risks", "residual risk is Unacceptable", 15, "RK_011")
-    s = service(c, run_build=lambda g, m, o: BuildResult(report([err]), None),
-                publish=lambda pdf, mode: published.append(mode))
-    s.submit("final", "U1")
+    err = Issue("Risks", "hazard_id 'HZ_404' is not on the Hazards tab", 15, "RK_011")
+    s = service(c, run_build=lambda g, o: BuildResult(report([err]), None),
+                publish=lambda pdf: published.append(pdf))
+    s.submit("U1")
     s.run_pending()
     assert published == []
 
 
 def test_invalid_sheet_lists_problems_with_row_links():
     c = FakeClient()
-    err = Issue("Risks", "residual risk is Unacceptable", 15, "RK_011")
-    warn = Issue("Hazards", "hazard has no risks", 5, "HZ_002")
-    s = service(c, run_build=lambda g, m, o: BuildResult(report([err], [warn]), None))
-    s.submit("final", "U1")
+    err = Issue("Risks", "hazard_id 'HZ_404' is not on the Hazards tab", 15, "RK_011")
+    info = Issue("Hazards", "hazard has no risks", 5, "HZ_002")
+    s = service(c, run_build=lambda g, o: BuildResult(report([err], info=[info]), None))
+    s.submit("U1")
     s.run_pending()
     reply = c.of("post")[1]
     assert reply["thread_ts"] == "100.1"
     assert ("*<https://docs.google.com/spreadsheets/d/SHEET/edit#gid=44&range=A15|"
-            "Risks row 15 (RK_011)>*: residual risk is Unacceptable") in reply["text"]
-    assert "gid=11&range=A5" in reply["text"]
-    assert "run `/risk final` again" in reply["text"]
+            "Risks row 15 (RK_011)>*: hazard_id 'HZ_404' is not on the Hazards tab") in reply["text"]
+    assert ":information_source: *1 info*" in reply["text"] and "gid=11&range=A5" in reply["text"]
+    assert "run `/risk` again" in reply["text"]
     assert c.of("upload") == []
-    assert "1 problem to fix" in c.of("update")[-1]["text"]
+    assert "1 error to fix" in c.of("update")[-1]["text"]
+
+
+def test_warnings_do_not_stop_the_build():
+    c = FakeClient()
+    warn = Issue("Risks", "residual risk is Unacceptable", 15, "RK_011")
+    s = service(c, run_build=lambda g, o: BuildResult(report(warnings=[warn]), o))
+    s.submit("U1")
+    s.run_pending()
+    comment = c.of("upload")[0]["initial_comment"]
+    assert "Here's the PDF." in comment and ":warning: *1 warning*" in comment
+    assert "residual risk is Unacceptable" in comment
+    assert "PDF in thread (1 warning)." in c.of("update")[-1]["text"]
 
 
 def test_long_lists_are_cut_and_attached():
     c = FakeClient()
     errs = [Issue("Risks", f"problem {i}", i, f"RK_{i:03}") for i in range(40)]
-    s = service(c, run_build=lambda g, m, o: BuildResult(report(errs), None))
-    s.submit("final", "U1")
+    s = service(c, run_build=lambda g, o: BuildResult(report(errs), None))
+    s.submit("U1")
     s.run_pending()
     reply = c.of("post")[1]["text"]
     assert reply.count("\n• ") <= fmt.MAX_LINES
@@ -147,7 +157,7 @@ def test_failures_are_reported_plainly(exc, phrase):
         raise exc
 
     s = service(c, fetch_sheet=explode)
-    s.submit("pdr", "U1")
+    s.submit("U1")
     s.run_pending()
     reply = c.of("post")[1]["text"]
     assert phrase in reply and "secret internals" not in reply
@@ -157,12 +167,12 @@ def test_failures_are_reported_plainly(exc, phrase):
 def test_second_build_queues_behind_the_first():
     c = FakeClient()
     s = service(c)
-    s.submit("final", "U1")
-    s.submit("pdr", "U2")
+    s.submit("U1")
+    s.submit("U2")
     assert "queued behind <@U1>" in c.of("post")[1]["text"]
     s.run_pending()
     updates = [u["text"] for u in c.of("update") if u["ts"] == "100.2"]
-    assert "started a *PDR* build" in updates[0]
+    assert "<@U2> started a build" in updates[0]
     assert ":white_check_mark:" in updates[-1]
 
 
@@ -195,7 +205,7 @@ def invoke(text, channel="C1"):
 
 def test_help_is_private():
     acks, c, _ = invoke("help")
-    assert acks[0]["response_type"] == "ephemeral" and "/risk final" in acks[0]["text"]
+    assert acks[0]["response_type"] == "ephemeral" and "`/risk` builds" in acks[0]["text"]
     assert c.calls == []
 
 
@@ -205,20 +215,19 @@ def test_unknown_option():
 
 
 def test_wrong_channel_is_refused_privately():
-    acks, c, _ = invoke("final", channel="C9")
+    acks, c, _ = invoke("", channel="C9")
     assert "only works in <#C1>" in acks[0]["text"] and c.calls == []
 
 
-def test_bare_command_builds_final():
-    acks, c, s = invoke("")
+def test_bare_command_queues_a_build():
+    acks, c, s = invoke(" ")
     assert acks == [{}]
-    assert s.jobs.qsize() == 1 and "started a *Final* build" in c.of("post")[0]["text"]
+    assert s.jobs.qsize() == 1 and "started a build" in c.of("post")[0]["text"]
 
 
-def test_valid_command_queues_a_build():
-    acks, c, s = invoke(" Final ")
-    assert acks == [{}]
-    assert s.jobs.qsize() == 1 and "started a *Final* build" in c.of("post")[0]["text"]
+def test_old_mode_names_are_unknown():
+    acks, _, s = invoke("final")
+    assert "I don't know `/risk final`" in acks[0]["text"] and s.jobs.qsize() == 0
 
 
 # ---- Deploy announcement ---------------------------------------------------
@@ -263,9 +272,9 @@ def test_real_build_from_sample_sheet(tmp_path):
     grids = json.loads((ROOT / "examples/sample-sheet.json").read_text())
     c = FakeClient()
     s = service(c, fetch_sheet=lambda: Sheet(grids, GIDS),
-                run_build=lambda g, m, out: build(g, m, ROOT, out))
-    s.submit("final", "U1")
+                run_build=lambda g, out: build(g, ROOT, out))
+    s.submit("U1")
     s.run_pending()
     upload = c.of("upload")[0]
-    assert Path(upload["file"]).name == "risk-assessment-final.pdf"
+    assert Path(upload["file"]).name == "risk-assessment.pdf"
     assert ":white_check_mark:" in c.of("update")[-1]["text"]

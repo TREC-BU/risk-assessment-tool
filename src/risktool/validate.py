@@ -1,24 +1,25 @@
 """Parse the four tabs, enforce the method rules and build the render data.
 
-Every problem is reported against the tab and spreadsheet row it came from.
-Errors stop the build; warnings are printed but don't.
+Every problem is reported against the tab and spreadsheet row it came from,
+at one of three levels:
 
-PDR builds render only the method, hazards and initial scores, so rules about
-mitigations and residual risk are downgraded to warnings there.
+- error: the sheet can't be read as written (bad IDs, unknown types, malformed
+  cells). Stops the build, since the PDF can't render it.
+- warning: the method isn't satisfied yet (unmitigated or unjustified risk,
+  residual above `acceptable-max`). The document is living, so these never
+  stop the build.
+- info: worth a look, e.g. a hazard with no risks.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
 
 from pydantic import BaseModel, ValidationError
 
 from .config import MethodConfig
 from .models import COMPUTED_FIELDS, CONTENT_FIELDS, MODELS, Hazard, Mitigation, Risk, Situation
 from .sheets import KEY_HEADER, TABS, Grid, Row, SheetFormatError, parse_tab
-
-Mode = Literal["pdr", "final"]
 
 # Persons value that marks a rider situation (for the rider-only warning).
 RIDER = "rider"
@@ -50,9 +51,9 @@ def _issue(where: Row | str, msg: str) -> Issue:
 
 @dataclass
 class Report:
-    mode: Mode
     errors: list[Issue] = field(default_factory=list)
     warnings: list[Issue] = field(default_factory=list)
+    info: list[Issue] = field(default_factory=list)
     data: dict | None = None
 
     @property
@@ -65,9 +66,8 @@ class Report:
     def warn(self, where: Row | str, msg: str) -> None:
         self.warnings.append(_issue(where, msg))
 
-    def residual(self, where: Row | str, msg: str) -> None:
-        """A mitigation/residual rule: an error for Final, a warning for PDR."""
-        (self.error if self.mode == "final" else self.warn)(where, msg)
+    def note(self, where: Row | str, msg: str) -> None:
+        self.info.append(_issue(where, msg))
 
 
 def _fmt_pydantic(exc: ValidationError) -> str:
@@ -110,7 +110,7 @@ def _load_tab(tab: str, grid: Grid, report: Report) -> list[tuple[Row, BaseModel
                 and not (k == "misuse" and v in ("0", "FALSE"))
             ]
             if stray:
-                report.warn(row, f"ignored: row has {', '.join(stray)} "
+                report.note(row, f"ignored: row has {', '.join(stray)} "
                             f"but no {' / '.join(CONTENT_FIELDS[tab])}")
             continue
         try:
@@ -129,8 +129,8 @@ def _load_tab(tab: str, grid: Grid, report: Report) -> list[tuple[Row, BaseModel
     return out
 
 
-def validate(grids: dict[str, Grid], config: MethodConfig, mode: Mode) -> Report:
-    report = Report(mode)
+def validate(grids: dict[str, Grid], config: MethodConfig) -> Report:
+    report = Report()
     loaded = {tab: _load_tab(tab, grids.get(tab, []), report) for tab in TABS}
 
     hazards: dict[str, Hazard] = {h.hazard_id: h for _, h in loaded["Hazards"]}
@@ -148,7 +148,6 @@ def validate(grids: dict[str, Grid], config: MethodConfig, mode: Mode) -> Report
 
     if report.ok:
         report.data = {
-            "mode": mode,
             "hazards": [h.model_dump() for h in hazards.values()],
             "situations": [s.model_dump() for s in situations.values()],
             "mitigations": [
@@ -196,9 +195,9 @@ def _check_risk(row, r: Risk, hazards, situations, mitigations, config: MethodCo
             report.error(where, f"mitigation '{mid}' is not on the Mitigations tab")
 
     if not r.p0_justification:
-        report.warn(where, "p0 has no justification")
+        report.note(where, "p0 has no justification")
     if not r.s0_justification:
-        report.warn(where, "s0 has no justification")
+        report.note(where, "s0 has no justification")
 
     initial = _scores(config, r.p0, r.s0)
     has_residual = r.p1 is not None or r.s1 is not None
@@ -213,51 +212,46 @@ def _check_risk(row, r: Risk, hazards, situations, mitigations, config: MethodCo
 
     if initial["band"] == top:
         if not r.mitigations:
-            report.residual(where, f"initial risk is {config.band_name(top)} "
+            report.warn(where, f"initial risk is {config.band_name(top)} "
                             f"(P{r.p0} S{r.s0}) but no mitigations are linked")
         if not has_residual:
-            report.residual(where, f"initial risk is {config.band_name(top)} "
+            report.warn(where, f"initial risk is {config.band_name(top)} "
                             "but residual scores p1/s1 are missing")
-    elif r.mitigations and not has_residual and report.mode == "final":
-        report.warn(where, "mitigations are linked but residual scores p1/s1 are blank; "
+    elif r.mitigations and not has_residual:
+        report.note(where, "mitigations are linked but residual scores p1/s1 are blank; "
                     "residual taken as equal to initial")
 
     if has_residual:
         if r.p1 > r.p0 or r.s1 > r.s0:
-            report.residual(where, f"residual (P{r.p1} S{r.s1}) is higher than initial "
+            report.warn(where, f"residual (P{r.p1} S{r.s1}) is higher than initial "
                             f"(P{r.p0} S{r.s0})")
         if r.s1 < r.s0 and not any(
             "S" in m.reduces and (t := config.mitigation_type(m.type)) and t.lowers_severity
             for m in linked
         ):
             allowed = "/".join(t.name for t in config.mitigation_types if t.lowers_severity)
-            report.residual(where, f"S drops {r.s0} → {r.s1} without a linked {allowed} "
+            report.warn(where, f"S drops {r.s0} → {r.s1} without a linked {allowed} "
                             "mitigation that reduces S")
         if r.p1 < r.p0 and not any("P" in m.reduces for m in linked):
-            report.residual(where, f"P drops {r.p0} → {r.p1} without a linked mitigation "
+            report.warn(where, f"P drops {r.p0} → {r.p1} without a linked mitigation "
                             "that reduces P")
 
     band = next(b for b in config.bands if b.code == residual["band"])
     # Unmitigated risks carry their initial band forward, so they need it too.
-    if (band.justify and (has_residual or report.mode == "final")
-            and not (r.p1_justification or r.s1_justification)):
-        report.residual(where, f"residual risk is {band.name}; write a justification in "
+    if band.justify and not (r.p1_justification or r.s1_justification):
+        report.warn(where, f"residual risk is {band.name}; write a justification in "
                         "p1_justification or s1_justification")
 
     if config.rank(residual["band"]) > config.rank(config.acceptable_max):
-        msg = (f"residual risk is {config.band_name(residual['band'])} "
-               f"(P{p1} S{s1}); highest allowed for Final is "
-               f"{config.band_name(config.acceptable_max)}")
-        if report.mode == "final":
-            report.error(where, msg)
-        elif has_residual:
-            report.warn(where, msg)
+        report.warn(where, f"residual risk is {config.band_name(residual['band'])} "
+                    f"(P{p1} S{s1}); highest acceptable is "
+                    f"{config.band_name(config.acceptable_max)}")
 
     if linked:
         weak = {m.type for m in linked
                 if (t := config.mitigation_type(m.type)) and not t.lowers_severity}
         if all(m.type in weak for m in linked):
-            report.warn(where, f"mitigated only by {'/'.join(sorted(weak))} measures")
+            report.note(where, f"mitigated only by {'/'.join(sorted(weak))} measures")
 
     return {
         **r.model_dump(),
@@ -272,15 +266,15 @@ def _coverage_warnings(loaded, situations, report: Report) -> None:
     for row, h in loaded["Hazards"]:
         mine = [r for r in risks if r.hazard_id == h.hazard_id]
         if not mine:
-            report.warn(row, "hazard has no risks")
+            report.note(row, "hazard has no risks")
             continue
         persons = {situations[r.situation_id].persons.strip().lower()
                    for r in mine if r.situation_id in situations}
         if persons == {RIDER}:
-            report.warn(row, "hazard is assessed only against rider situations")
+            report.note(row, "hazard is assessed only against rider situations")
     for row, s in loaded["Situations"]:
         if not any(r.situation_id == s.situation_id for r in risks):
-            report.warn(row, "situation has no risks")
+            report.note(row, "situation has no risks")
     for row, m in loaded["Mitigations"]:
         if not any(m.mitigation_id in r.mitigations for r in risks):
-            report.warn(row, "mitigation is not linked to any risk")
+            report.note(row, "mitigation is not linked to any risk")

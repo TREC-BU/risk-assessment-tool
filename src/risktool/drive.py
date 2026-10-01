@@ -1,7 +1,6 @@
 """Publish a built PDF to the Drive folder next to the Google Sheet.
 
-Each mode has one file in the folder, e.g. "Risk assessment (Final).pdf", and
-every build replaces its contents. The link stays the same and Drive keeps
+The folder holds one file, FILE_NAME, and every build replaces its contents. The link stays the same and Drive keeps
 the earlier versions.
 
 The service account has no Drive storage of its own, so in a My Drive folder
@@ -17,10 +16,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .validate import Mode
-
 FOLDER_NAME = "published risk assessment"
-MODE_NAMES = {"pdr": "PDR", "final": "Final"}
+FILE_NAME = "Risk assessment.pdf"
 
 API = "https://www.googleapis.com/drive/v3/files"
 UPLOAD = "https://www.googleapis.com/upload/drive/v3/files"
@@ -34,10 +31,6 @@ class DriveError(Exception):
 
 class NoQuotaError(DriveError):
     """The service account tried to create a file where it has no storage."""
-
-
-def file_name(mode: Mode) -> str:
-    return f"Risk assessment ({MODE_NAMES[mode]}).pdf"
 
 
 class Drive:
@@ -79,9 +72,9 @@ class Drive:
                              "set RISK_DRIVE_FOLDER_ID to pick one.")
         return matches[0]["id"]
 
-    def publish(self, pdf: Path, mode: Mode, folder: str) -> str:
-        """Replace (or create) this mode's PDF in `folder`. Returns its link."""
-        name = file_name(mode)
+    def publish(self, pdf: Path, folder: str) -> str:
+        """Replace (or create) the PDF in `folder`. Returns its link."""
+        name = FILE_NAME
         data = pdf.read_bytes()
         existing = self._list(f"name = '{name}' and '{folder}' in parents and trashed = false")
         if existing:

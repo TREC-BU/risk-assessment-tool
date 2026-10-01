@@ -4,17 +4,14 @@ from __future__ import annotations
 
 import re
 
-from .validate import Issue, Mode, Report
-
-MODE_NAMES = {"pdr": "PDR", "final": "Final"}
+from .validate import Issue, Report
 
 # Longer issue lists are cut here; the full list is attached as a text file.
 MAX_LINES = 15
 
 HELP = """*Risk assessment builder*
-• `/risk pdr` builds the Preliminary Design Review document: method, hazards and initial risk scores.
-• `/risk` or `/risk final` builds the complete document. It won't build while any risk is still Unacceptable.
-Each build reads the Google Sheet as it is right now. If something needs fixing, the bot lists it with a link to the row."""
+• `/risk` builds the risk assessment from the Google Sheet as it is right now.
+Anything worth fixing is listed with a link to its row. Only errors, such as an ID that doesn't exist, stop the build; warnings (like an Unacceptable risk) and info don't."""
 
 
 def escape(text: str) -> str:
@@ -42,25 +39,29 @@ def _bullets(issues: list[Issue], sheet_id: str, gids: dict[str, int]) -> list[s
 
 # ---- Top-level status message (edited as the build progresses) ------------
 
-def queued(mode: Mode, user: str, behind: str) -> str:
-    return f":hourglass: {mention(user)}'s *{MODE_NAMES[mode]}* build is queued behind {mention(behind)}'s build…"
+def _count(n: int, noun: str) -> str:
+    return f"1 {noun}" if n == 1 else f"{n} {noun}s"
 
 
-def started(mode: Mode, user: str) -> str:
-    return f":hourglass_flowing_sand: {mention(user)} started a *{MODE_NAMES[mode]}* build…"
+def queued(user: str, behind: str) -> str:
+    return f":hourglass: {mention(user)}'s build is queued behind {mention(behind)}'s build…"
 
 
-def succeeded(mode: Mode, user: str) -> str:
-    return f":white_check_mark: *{MODE_NAMES[mode]}* build by {mention(user)}: PDF in thread."
+def started(user: str) -> str:
+    return f":hourglass_flowing_sand: {mention(user)} started a build…"
 
 
-def invalid(mode: Mode, user: str, count: int) -> str:
-    problems = "1 problem" if count == 1 else f"{count} problems"
-    return f":x: *{MODE_NAMES[mode]}* build by {mention(user)}: {problems} to fix in the sheet. Details in thread."
+def succeeded(user: str, warnings: int) -> str:
+    note = f" ({_count(warnings, 'warning')})" if warnings else ""
+    return f":white_check_mark: Build by {mention(user)}: PDF in thread{note}."
 
 
-def crashed(mode: Mode, user: str) -> str:
-    return f":warning: *{MODE_NAMES[mode]}* build by {mention(user)} couldn't run. Details in thread."
+def invalid(user: str, count: int) -> str:
+    return f":x: Build by {mention(user)}: {_count(count, 'error')} to fix in the sheet. Details in thread."
+
+
+def crashed(user: str) -> str:
+    return f":warning: Build by {mention(user)} couldn't run. Details in thread."
 
 
 # ---- Thread reply ----------------------------------------------------------
@@ -73,23 +74,28 @@ def result(report: Report, sheet_id: str, gids: dict[str, int],
     """
     lines: list[str] = []
     if report.errors:
-        lines.append(f"Fix these in the sheet, then run `/risk {report.mode}` again:")
+        lines.append("Fix these in the sheet, then run `/risk` again:")
         lines += _bullets(report.errors, sheet_id, gids)
     else:
         lines.append("Here's the PDF.")
         if drive:
             lines.append(drive)
     if report.warnings:
-        n = len(report.warnings)
         lines.append("")
-        lines.append(f":warning: *{n} warning{'s' if n != 1 else ''}* (worth checking, but they don't stop the build):")
+        lines.append(f":warning: *{_count(len(report.warnings), 'warning')}* "
+                     "(the method isn't satisfied yet, but they don't stop the build):")
         lines += _bullets(report.warnings, sheet_id, gids)
+    if report.info:
+        lines.append("")
+        lines.append(f":information_source: *{len(report.info)} info* (worth a look):")
+        lines += _bullets(report.info, sheet_id, gids)
 
     if len(lines) <= MAX_LINES + 1:
         return "\n".join(lines), None
     shown = lines[:MAX_LINES]
     shown.append(f"_…and {len(lines) - MAX_LINES} more lines. The full list is attached._")
-    full = [f"error: {i}" for i in report.errors] + [f"warning: {i}" for i in report.warnings]
+    full = ([f"error: {i}" for i in report.errors] + [f"warning: {i}" for i in report.warnings]
+            + [f"info: {i}" for i in report.info])
     return "\n".join(shown), "\n".join(full) + "\n"
 
 

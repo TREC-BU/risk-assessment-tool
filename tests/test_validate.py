@@ -3,8 +3,8 @@ from conftest import make_sheet, risk
 from risktool.validate import validate
 
 
-def run(config, mode="final", **tabs):
-    return validate(make_sheet(**tabs), config, mode)
+def run(config, **tabs):
+    return validate(make_sheet(**tabs), config)
 
 
 def has(messages, *fragments):
@@ -42,7 +42,7 @@ def test_prefilled_blank_rows_are_skipped(config, base):
 def test_blank_row_with_stray_scores_warns(config, base):
     stray = ["RK_002", "", "", "", "", "", "", "", "0", "", "2", "", "2", "", "4"]
     r = run(config, risks=[risk(p0=1, s0=1), stray], **base)
-    assert has(r.warnings, "Risks row 6 (RK_002)", "ignored", "p1")
+    assert has(r.info, "Risks row 6 (RK_002)", "ignored", "p1")
 
 
 def test_errors_name_tab_and_row(config, base):
@@ -80,54 +80,50 @@ def test_unknown_design_ref_prefix(config, base):
     assert has(r.errors, "M_004", "prefix 'XYZ'")
 
 
-def test_unacceptable_needs_mitigation_and_residual(config, base):
+def test_unacceptable_needs_mitigation_and_residual_but_never_blocks(config, base):
     r = run(config, risks=[risk()], **base)
-    assert has(r.errors, "RK_001", "no mitigations")
-    assert has(r.errors, "RK_001", "p1/s1 are missing")
-
-
-def test_pdr_downgrades_residual_rules(config, base):
-    r = run(config, mode="pdr", risks=[risk()], **base)
-    assert r.errors == []
+    assert r.errors == [] and r.data is not None
     assert has(r.warnings, "RK_001", "no mitigations")
+    assert has(r.warnings, "RK_001", "p1/s1 are missing")
 
 
 def test_severity_cannot_drop_with_administrative_only(config, base):
     r = run(config, risks=[risk(mits="M_001", p1=2, s1=4, s1j="x")], **base)
-    assert has(r.errors, "RK_001", "S drops 5 → 4")
+    assert has(r.warnings, "RK_001", "S drops 5 → 4")
 
 
 def test_severity_drop_needs_mitigation_reducing_s(config, base):
     # M_002 is Safeguarding but only reduces P.
     r = run(config, risks=[risk(mits="M_002", p1=1, s1=4, p1j="x")], **base)
-    assert has(r.errors, "RK_001", "S drops")
+    assert has(r.warnings, "RK_001", "S drops")
 
 
 def test_probability_drop_needs_mitigation_reducing_p(config, base):
     r = run(config, risks=[risk(mits="M_003", p1=1, s1=4, p1j="x")], **base)
-    assert has(r.errors, "RK_001", "P drops")
+    assert has(r.warnings, "RK_001", "P drops")
 
 
 def test_residual_cannot_exceed_initial(config, base):
     r = run(config, risks=[risk(p0=1, s0=1, mits="M_002", p1=2, s1=1)], **base)
-    assert has(r.errors, "RK_001", "higher than initial")
+    assert has(r.warnings, "RK_001", "higher than initial")
 
 
 def test_justifiable_residual_needs_justification(config, base):
     r = run(config, risks=[risk(mits="M_002; M_003", p1=2, s1=3)], **base)
-    assert has(r.errors, "RK_001", "Justifiable", "justification")
+    assert has(r.warnings, "RK_001", "Justifiable", "justification")
     r = run(config, risks=[risk(mits="M_002; M_003", p1=2, s1=3, p1j="one safeguard")], **base)
-    assert r.errors == []
+    assert r.warnings == []
 
 
-def test_final_fails_on_unacceptable_residual(config, base):
+def test_unacceptable_residual_warns(config, base):
     r = run(config, risks=[risk(mits="M_002", p1=3, s1=5, p1j="x")], **base)
-    assert has(r.errors, "RK_001", "residual risk is Unacceptable")
+    assert r.errors == []
+    assert has(r.warnings, "RK_001", "residual risk is Unacceptable")
 
 
-def test_final_fails_on_unmitigated_unacceptable_even_without_residual(config, base):
+def test_unmitigated_unacceptable_warns_even_without_residual(config, base):
     r = run(config, risks=[risk(p0=3, s0=4)], **base)
-    assert has(r.errors, "residual risk is Unacceptable")
+    assert has(r.warnings, "residual risk is Unacceptable")
 
 
 def test_p1_without_s1(config, base):
@@ -135,38 +131,36 @@ def test_p1_without_s1(config, base):
     assert has(r.errors, "RK_001", "both p1 and s1")
 
 
-def test_warnings(config, base):
+def test_info(config, base):
     base["hazards"].append(["HZ_002", "Electrical", "24V bus"])
     base["situations"].append(["ST_003", "Maintainer", "Maintenance", "0", "working on panel"])
     r = run(config, risks=[risk(p0=3, s0=2, mits="M_001", p1=2, s1=2)], **base)
-    assert r.errors == []
-    assert has(r.warnings, "Hazards row 5 (HZ_002)", "no risks")
-    assert has(r.warnings, "Situations row 6 (ST_003)", "no risks")
-    assert has(r.warnings, "HZ_001", "only against rider")
-    assert has(r.warnings, "RK_001", "only by Administrative")
-    assert has(r.warnings, "M_002", "not linked")
+    assert r.errors == [] and r.warnings == []
+    assert has(r.info, "Hazards row 5 (HZ_002)", "no risks")
+    assert has(r.info, "Situations row 6 (ST_003)", "no risks")
+    assert has(r.info, "HZ_001", "only against rider")
+    assert has(r.info, "RK_001", "only by Administrative")
+    assert has(r.info, "M_002", "not linked")
 
 
 def test_missing_column(config, base):
     sheet = make_sheet(**base)
     sheet["Hazards"][2] = ["", "hazard_id", "category"]
-    r = validate(sheet, config, "final")
+    r = validate(sheet, config)
     assert has(r.errors, "Hazards", "missing column", "hazard")
 
 
 def test_missing_header_row(config, base):
     sheet = make_sheet(**base)
     sheet["Risks"] = [["", "nothing here"]]
-    r = validate(sheet, config, "final")
+    r = validate(sheet, config)
     assert has(r.errors, "Risks", "risk_id")
 
 
-def test_unmitigated_justifiable_risk_needs_justification_in_final(config, base):
+def test_unmitigated_justifiable_risk_needs_justification(config, base):
     r = run(config, risks=[risk(p0=3, s0=2)], **base)
-    assert has(r.errors, "RK_001", "Justifiable", "justification")
+    assert has(r.warnings, "RK_001", "Justifiable", "justification")
     r = run(config, risks=[risk(p0=3, s0=2, p1j="accepted: padded headrest")], **base)
-    assert r.errors == []
-    r = run(config, mode="pdr", risks=[risk(p0=3, s0=2)], **base)
     assert not has(r.warnings, "justification")
 
 

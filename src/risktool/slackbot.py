@@ -1,4 +1,4 @@
-"""Slack bot: `/risk [pdr|final]` in one channel builds the PDF from the live sheet.
+"""Slack bot: `/risk` in one channel builds the PDF from the live sheet.
 
 Each build posts a status message in the channel, edits it as the build
 progresses, and replies in its thread with the PDF or the problems to fix.
@@ -17,7 +17,7 @@ from the environment (or .env):
                          the deployed commit, set by scripts/deploy.sh (optional)
     RISK_REPO_URL        GitHub repo, for the commit link (optional)
 
-Each successful build also replaces that mode's PDF in Google Drive. After a
+Each successful build also replaces the PDF in Google Drive. After a
 deploy, the bot posts the commit it now runs.
 """
 
@@ -37,9 +37,8 @@ from typing import Callable
 from . import slack_format as fmt
 from .cli import ROOT, load_dotenv
 from .drive import Drive, DriveError
-from .pipeline import BUILD, BuildResult, CompileError, build, typst_env
+from .pipeline import BUILD, PDF_NAME, BuildResult, CompileError, build, typst_env
 from .sheets import Grid, Sheet, SheetFormatError, connect, fetch
-from .validate import Mode
 
 log = logging.getLogger("risktool.slack")
 
@@ -53,7 +52,6 @@ REQUIRED_FONTS = ("Helvetica Neue", "Arial", "Raleway")
 
 @dataclass
 class Job:
-    mode: Mode
     user: str
     ts: str  # the channel status message this build edits
     was_queued: bool
@@ -64,8 +62,8 @@ class BuildService:
 
     def __init__(self, client, channel: str, sheet_id: str,
                  fetch_sheet: Callable[[], Sheet],
-                 run_build: Callable[[dict[str, Grid], Mode, Path], BuildResult],
-                 publish: Callable[[Path, Mode], str] | None = None):
+                 run_build: Callable[[dict[str, Grid], Path], BuildResult],
+                 publish: Callable[[Path], str] | None = None):
         self.client = client
         self.channel = channel
         self.sheet_id = sheet_id
@@ -77,12 +75,12 @@ class BuildService:
         self.waiting: list[Job] = []
         self.current: Job | None = None
 
-    def submit(self, mode: Mode, user: str) -> None:
+    def submit(self, user: str) -> None:
         with self.lock:
             ahead = self.waiting[-1] if self.waiting else self.current
-            text = fmt.queued(mode, user, ahead.user) if ahead else fmt.started(mode, user)
+            text = fmt.queued(user, ahead.user) if ahead else fmt.started(user)
             ts = self.client.chat_postMessage(channel=self.channel, text=text)["ts"]
-            job = Job(mode, user, ts, was_queued=ahead is not None)
+            job = Job(user, ts, was_queued=ahead is not None)
             self.waiting.append(job)
         self.jobs.put(job)
 
@@ -115,33 +113,32 @@ class BuildService:
     def _build(self, job: Job) -> None:
         try:
             if job.was_queued:
-                self._status(job, fmt.started(job.mode, job.user))
+                self._status(job, fmt.started(job.user))
             sheet = self.fetch_sheet()
             with tempfile.TemporaryDirectory() as tmp:
-                name = f"risk-assessment-{job.mode}.pdf"
-                result = self.run_build(sheet.grids, job.mode, Path(tmp) / name)
+                result = self.run_build(sheet.grids, Path(tmp) / PDF_NAME)
                 drive = self._publish(job, result.pdf) if result.pdf else None
                 text, overflow = fmt.result(result.report, self.sheet_id, sheet.gids, drive)
                 if result.pdf:
                     self.client.files_upload_v2(
                         channel=self.channel, thread_ts=job.ts, file=str(result.pdf),
-                        filename=name, title=f"Risk assessment ({fmt.MODE_NAMES[job.mode]})",
+                        filename=PDF_NAME, title="Risk assessment",
                         initial_comment=text,
                     )
-                    self._status(job, fmt.succeeded(job.mode, job.user))
+                    self._status(job, fmt.succeeded(job.user, len(result.report.warnings)))
                 else:
                     self._reply(job, text)
-                    self._status(job, fmt.invalid(job.mode, job.user, len(result.report.errors)))
+                    self._status(job, fmt.invalid(job.user, len(result.report.errors)))
                 if overflow:
                     self.client.files_upload_v2(
                         channel=self.channel, thread_ts=job.ts, content=overflow,
-                        filename="problems.txt", title="All problems and warnings",
+                        filename="problems.txt", title="All errors, warnings and info",
                     )
         except Exception as exc:
-            log.exception("%s build for %s failed", job.mode, job.user)
+            log.exception("build for %s failed", job.user)
             try:
                 self._reply(job, fmt.failure(describe(exc)))
-                self._status(job, fmt.crashed(job.mode, job.user))
+                self._status(job, fmt.crashed(job.user))
             except Exception:
                 log.exception("could not report the failure to Slack")
 
@@ -150,9 +147,9 @@ class BuildService:
         if not self.publish:
             return None
         try:
-            return fmt.published(self.publish(pdf, job.mode))
+            return fmt.published(self.publish(pdf))
         except Exception as exc:
-            log.exception("publishing the %s PDF to Drive failed", job.mode)
+            log.exception("publishing the PDF to Drive failed")
             return fmt.publish_failed(
                 str(exc) if isinstance(exc, DriveError) else "something unexpected went wrong.")
 
@@ -182,8 +179,8 @@ def register(app, service: BuildService, channel: str) -> None:
 
     @app.command("/risk")
     def risk(ack, command, respond):
-        arg = command.get("text", "").strip().lower() or "final"
-        if arg not in ("pdr", "final"):
+        arg = command.get("text", "").strip().lower()
+        if arg:
             prefix = "" if arg == "help" else f"I don't know `/risk {fmt.escape(arg)}`.\n\n"
             ack(response_type="ephemeral", text=prefix + fmt.HELP)
             return
@@ -192,7 +189,7 @@ def register(app, service: BuildService, channel: str) -> None:
             return
         ack()
         try:
-            service.submit(arg, command["user_id"])
+            service.submit(command["user_id"])
         except SlackApiError as exc:
             if exc.response.get("error") in ("not_in_channel", "channel_not_found"):
                 respond(response_type="ephemeral",
@@ -250,15 +247,15 @@ def main() -> None:
         sys.exit(f"risktool-slack: Google key not found: {exc.filename}")
     drive = Drive(google.http_client.session)
 
-    def publish(pdf: Path, mode: Mode) -> str:
+    def publish(pdf: Path) -> str:
         folder = env.get("RISK_DRIVE_FOLDER_ID") or drive.find_folder(sheet_id)
-        return drive.publish(pdf, mode, folder)
+        return drive.publish(pdf, folder)
 
     app = App(token=env["SLACK_BOT_TOKEN"])
     service = BuildService(
         app.client, channel, sheet_id,
         fetch_sheet=lambda: fetch(google, sheet_id),
-        run_build=lambda grids, mode, out: build(grids, mode, ROOT, out),
+        run_build=lambda grids, out: build(grids, ROOT, out),
         publish=publish,
     )
     threading.Thread(target=service.run_forever, name="builder", daemon=True).start()

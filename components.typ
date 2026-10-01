@@ -5,7 +5,6 @@
 #import "template.typ": doc, th
 
 #let data = json("build/risk.json")
-#let final = data.mode == "final"
 
 #let by-id(items, key) = items.fold((:), (acc, it) => { acc.insert(it.at(key), it); acc })
 #let hazards = by-id(data.hazards, "hazard_id")
@@ -28,6 +27,12 @@
 // Marks prose still to be written, so a gap can't slip into a PDF unnoticed.
 #let todo() = text(fill: red, weight: "bold")[\[TODO: write this\]]
 #let ids(list) = if list.len() == 0 { dash } else { list.join(", ") }
+
+// Cross-references: each risk and mitigation gets one anchor, placed where it
+// is assessed (Risk Evaluation) or described (Risk Mitigation).
+#let anchor(kind, id) = [#strong(id)#label(kind + "-" + id)]
+#let ref-to(kind, id) = link(label(kind + "-" + id), id)
+#let refs(kind, list) = if list.len() == 0 { dash } else { list.map(id => ref-to(kind, id)).join(", ") }
 
 #let situation-label(sid) = {
   let s = situations.at(sid)
@@ -111,7 +116,6 @@
 // Use as `#show: setup`.
 #let setup = doc.with(
   ..config.document,
-  status: config.document.status.at(data.mode),
   date: {
     let (y, m, d) = data.date.split("-").map(int)
     datetime(year: y, month: m, day: d)

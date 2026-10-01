@@ -10,7 +10,7 @@ features:
   slash_commands:
     - command: /risk
       description: Build the risk assessment PDF from the sheet
-      usage_hint: "[final] | pdr | help"
+      usage_hint: "[help]"
       should_escape: false
 oauth_config:
   scopes:

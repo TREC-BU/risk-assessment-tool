@@ -82,13 +82,12 @@ Never commit the key. `.gitignore` excludes the usual names.
 ## Use
 
 ```sh
-.venv/bin/risktool build               # Final: everything; fails on any Unacceptable residual
-.venv/bin/risktool build -O            # same, then open the PDF (macOS)
-.venv/bin/risktool build --mode pdr     # method, hazard list, initial scores
-.venv/bin/risktool check               # validate only (also takes --mode)
+.venv/bin/risktool build      # validate and render the PDF
+.venv/bin/risktool build -O   # same, then open the PDF (macOS)
+.venv/bin/risktool check      # validate only
 ```
 
-The PDF goes to `build/risk-assessment-<mode>.pdf`. Add `--publish` to also
+The PDF goes to `build/risk-assessment.pdf`. Add `--publish` to also
 replace the team's copy in Google Drive (see
 [docs/slack-bot.md](docs/slack-bot.md#4-google-drive-copy)). Each fetch is cached in
 `build/sheet-cache.json`. Use `--from build/sheet-cache.json` to rebuild
@@ -96,8 +95,7 @@ without the network, or `--from examples/sample-sheet.json` to try it out.
 
 ## Slack bot
 
-Team members can build the PDF from Slack with `/risk` (Final) or `/risk pdr`;
-the bot runs in Docker on the server. Setup and operation:
+Team members can build the PDF from Slack with `/risk`; the bot runs in Docker on the server. Setup and operation:
 [docs/slack-bot.md](docs/slack-bot.md).
 
 ## Sheet layout
@@ -116,10 +114,18 @@ Rows that only have a pre-filled ID are skipped. The formula columns
 
 ## Validation
 
-Errors stop the build. Each one names the tab, spreadsheet row and ID, e.g.
-`Risks row 15 (RK_011): …`.
+The document is living, so only problems that stop the PDF from rendering
+block the build. Each issue names the tab, spreadsheet row and ID, e.g.
+`Risks row 15 (RK_011): …`, at one of three levels.
+
+**Errors** stop the build:
 
 - IDs are unique and every reference resolves. Lists and scores (1–5) parse.
+- Mitigation types and `design_ref` prefixes are ones the config knows.
+- `p1` and `s1` are given together or not at all.
+
+**Warnings** mean the method isn't satisfied yet. They don't stop the build:
+
 - An Unacceptable initial risk needs mitigations and residual `p1`/`s1`.
 - Residual scores can't exceed the initial ones.
 - S can only drop with a linked mitigation whose type may lower severity
@@ -128,12 +134,9 @@ Errors stop the build. Each one names the tab, spreadsheet row and ID, e.g.
 - A residual in a `justify: true` band (Justifiable) needs `p1_justification`
   or `s1_justification`. This includes unmitigated risks, whose initial band
   carries forward.
-- **Final**: no residual may be worse than `acceptable-max`.
+- No residual may be worse than `acceptable-max`.
 
-In **PDR** mode the mitigation and residual rules above are warnings, not
-errors.
-
-Warnings: a hazard or situation with no risks; a hazard assessed only against
+**Info**: a hazard or situation with no risks; a hazard assessed only against
 rider situations; a risk mitigated only by Administrative measures; a
 mitigation not linked to any risk; a row ignored for having scores but no
 content; missing `p0`/`s0` justifications.

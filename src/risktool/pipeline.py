@@ -11,7 +11,7 @@ from pathlib import Path
 
 from .config import load_config
 from .sheets import Grid
-from .validate import Mode, Report, validate
+from .validate import Report, validate
 
 CONFIG = "risk-config.typ"
 DOCUMENT = "risk-assessment.typ"
@@ -41,14 +41,13 @@ def typst_env(root: Path) -> dict[str, str]:
     return {**os.environ, "TYPST_FONT_PATHS": os.pathsep.join(paths)}
 
 
-def default_output(root: Path, mode: Mode) -> Path:
-    return root / BUILD / f"risk-assessment-{mode}.pdf"
+PDF_NAME = "risk-assessment.pdf"
 
 
-def build(grids: dict[str, Grid], mode: Mode, root: Path, output: Path | None = None,
+def build(grids: dict[str, Grid], root: Path, output: Path | None = None,
           render: bool = True) -> BuildResult:
-    """Validate `grids`; if they pass and `render` is set, compile the PDF."""
-    report = validate(grids, load_config(root / CONFIG), mode)
+    """Validate `grids`; if they have no errors and `render` is set, compile the PDF."""
+    report = validate(grids, load_config(root / CONFIG))
     if not report.ok or not render:
         return BuildResult(report, None)
 
@@ -56,7 +55,7 @@ def build(grids: dict[str, Grid], mode: Mode, root: Path, output: Path | None = 
     data = {**report.data, "date": date.today().isoformat()}
     (root / BUILD / "risk.json").write_text(json.dumps(data, indent=1, ensure_ascii=False))
 
-    output = (output or default_output(root, mode)).resolve()
+    output = (output or root / BUILD / PDF_NAME).resolve()
     result = subprocess.run(
         ["typst", "compile", "--root", str(root), str(root / DOCUMENT), str(output)],
         capture_output=True, text=True, env=typst_env(root),
