@@ -6,11 +6,46 @@
 #import "template.typ": doc-table, lead, th
 #import "components.typ": *
 
+// ---- Typical tasks by person (ASTM F3529 Table X1.1) ----------------------
+// Edit freely. One entry per person, in the order of `persons`. Use a list
+// ("a", "b") to split a cell into several tasks.
+#let persons = ("Untrained Person", "Informed Person", "Trained Person")
+#let use-cases = (
+  "Operate with Riders/Participants, Spectators": (
+    "Interacting with the amusement ride or device",
+    "Ancillary maintenance activities on or near the amusement ride or device",
+    "Operational activities",
+  ),
+  "Operate for Maintenance Purposes": (
+    "N/A",
+    "Ancillary maintenance activities on or near the amusement ride or device",
+    ("Maintenance activities", "Operational activities"),
+  ),
+  "Evacuation": (
+    "Evacuate the amusement ride or device",
+    "Evacuation activities",
+    "Evacuation activities",
+  ),
+  "Emergency Situations": (
+    "Follow instructions",
+    "Emergency response activities",
+    "Emergency response activities",
+  ),
+  "Non-Operation": (
+    "N/A",
+    "Ancillary maintenance activities on or near the amusement ride or device",
+    ("Energy isolation and control activities", "Maintenance activities"),
+  ),
+)
+
 #show: setup
 
 = Method & Scope
 
 #todo()
+
+== Typical Tasks by Person
+#task-table(persons, use-cases)
 
 == Scope
 #todo()

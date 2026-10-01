@@ -2,7 +2,7 @@
 // document file is just its content.
 
 #import "risk-config.typ": config
-#import "template.typ": doc
+#import "template.typ": doc, th
 
 #let data = json("build/risk.json")
 #let final = data.mode == "final"
@@ -57,6 +57,40 @@
     },
     [], [], ..levels.map(label),
     [], [], grid.cell(colspan: 5, label[*Probability*]),
+  )
+}
+
+// Tasks performed by each person for each use case (ASTM F3529 Table X1.1).
+// `use-cases` maps a use case to one entry per person; an entry is a task or
+// an array of tasks. Cells with fewer tasks than their row stretch to fill it.
+#let task-table(persons, use-cases) = {
+  let as-list(t) = if type(t) == array { t } else { (t,) }
+  let n-persons = persons.len()
+  table(
+    columns: (110pt,) + (1fr,) * n-persons,
+    align: left + top,
+    inset: (x: 5pt, top: 7pt, bottom: 6pt),
+    table.header(
+      th(rowspan: 2, align: horizon)[Use Case],
+      th(colspan: n-persons, align: center)[Tasks (by Person)],
+      ..persons.map(p => th(align: center, p)),
+    ),
+    ..for (use-case, tasks) in use-cases {
+      assert(tasks.len() == n-persons,
+        message: "use case \"" + use-case + "\" needs one entry per person")
+      let lists = tasks.map(as-list)
+      let rows = calc.max(..lists.map(l => l.len()))
+      // Emit row by row so Typst's grid places each cell in its column.
+      for r in range(rows) {
+        if r == 0 { (table.cell(rowspan: rows)[#use-case],) }
+        for l in lists {
+          if r < l.len() {
+            let span = if r == l.len() - 1 { rows - r } else { 1 }
+            (table.cell(rowspan: span)[#l.at(r)],)
+          }
+        }
+      }
+    },
   )
 }
 
