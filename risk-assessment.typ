@@ -6,37 +6,10 @@
 #import "template.typ": doc-table, lead, th
 #import "components.typ": *
 
-// ---- Typical tasks by person (ASTM F3529 Table X1.1) ----------------------
-// Edit freely. One entry per person, in the order of `persons`. Use a list
-// ("a", "b") to split a cell into several tasks.
-#let persons = ("Untrained Person", "Informed Person", "Trained Person")
-#let use-cases = (
-  "Operate with Riders/Participants, Spectators": (
-    "Interacting with the amusement ride or device",
-    "Ancillary maintenance activities on or near the amusement ride or device",
-    "Operational activities",
-  ),
-  "Operate for Maintenance Purposes": (
-    "N/A",
-    "Ancillary maintenance activities on or near the amusement ride or device",
-    ("Maintenance activities", "Operational activities"),
-  ),
-  "Evacuation": (
-    "Evacuate the amusement ride or device",
-    "Evacuation activities",
-    "Evacuation activities",
-  ),
-  "Emergency Situations": (
-    "Follow instructions",
-    "Emergency response activities",
-    "Emergency response activities",
-  ),
-  "Non-Operation": (
-    "N/A",
-    "Ancillary maintenance activities on or near the amusement ride or device",
-    ("Energy isolation and control activities", "Maintenance activities"),
-  ),
-)
+// ---- Person classes (ASTM F3529 Table X1.1) ------------------------------
+// Column order of the Tasks table. The tasks themselves come from the Tasks
+// tab; a class used there but not listed here is added as an extra column.
+#let person-classes = ("Untrained Person", "Informed Person", "Trained Person")
 
 #show: setup
 
@@ -93,7 +66,7 @@ The information for the risk assessment consists of the following:
 + Service Plan
 
 == Tasks
-#task-table(persons, use-cases)
+#task-table(person-classes, data.tasks)
 
 = Hazard Identification
 
@@ -103,18 +76,18 @@ The information for the risk assessment consists of the following:
 #doc-table(
   columns: (52pt, 120pt, 1fr),
   header: ([ID], [Category], [Hazard]),
-  ..for hz in data.hazards { ([*#hz.hazard_id*], [#hz.category], [#hz.hazard]) },
+  ..for hz in data.hazards { (anchor("hazard", hz.hazard_id), [#hz.category], [#hz.hazard]) },
 )
 
 == Hazardous Situations
 #lead[#todo()]
 
 #doc-table(
-  columns: (52pt, 72pt, 78pt, 44pt, 1fr),
-  header: ([ID], [Persons], [Ride phase], [Misuse], [Situation]),
+  columns: (52pt, 46pt, 60pt, 52pt, 1fr),
+  header: ([ID], [Task], [Person], [Hazard], [Situation]),
   ..for s in data.situations {
-    ([*#s.situation_id*], [#s.persons], [#s.ride_phase],
-     if s.misuse [Yes] else [No], [#s.situation])
+    (anchor("situation", s.situation_id), ref-to("task", s.task_id),
+     [#tasks.at(s.task_id).person], ref-to("hazard", s.hazard_id), [#s.situation])
   },
 )
 
@@ -122,10 +95,11 @@ The information for the risk assessment consists of the following:
 #lead[#todo()]
 
 #doc-table(
-  columns: (46pt, 52pt, 52pt, 1fr),
-  header: ([ID], [Hazard], [Situation], [Harmful event]),
-  ..for r in data.risks {
-    ([*#r.risk_id*], [#r.hazard_id], [#r.situation_id], [#r.event])
+  columns: (46pt, 52pt, 70pt, 1fr, 1fr),
+  header: ([ID], [Situation], [Cause type], [Cause], [Harm]),
+  ..for e in data.events {
+    (strong(ref-to("event", e.event_id)), ref-to("situation", e.situation_id),
+     [#e.cause_type], [#e.cause], [#e.harm])
   },
 )
 
@@ -175,28 +149,30 @@ The information for the risk assessment consists of the following:
 #todo()
 
 #for hz in data.hazards {
-  let risks = data.risks.filter(r => r.hazard_id == hz.hazard_id)
-  if risks.len() == 0 { continue }
+  let events = data.events.filter(e => e.hazard_id == hz.hazard_id)
+  if events.len() == 0 { continue }
   [=== #hz.hazard_id — #hz.hazard]
   doc-table(
-    columns: (44pt, 1fr, 18pt, 18pt, 26pt, 62pt, 18pt, 18pt, 26pt),
+    columns: (44pt, 1fr, 1fr, 18pt, 18pt, 26pt, 62pt, 18pt, 18pt, 26pt),
     header: table.header(
-      th(rowspan: 2)[ID], th(rowspan: 2)[Harmful event],
+      th(rowspan: 2)[ID], th(rowspan: 2)[Cause], th(rowspan: 2)[Harm],
       th(colspan: 3, align: center)[Initial], th(rowspan: 2)[Mitigations],
       th(colspan: 3, align: center)[Residual],
       ..([P], [S], [Risk], [P], [S], [Risk]).map(x => th(align: center, x)),
     ),
-    ..for r in risks {
+    ..for r in events {
       let just(pairs) = pairs.map(((k, v, t)) => [*#k#v:* #if t != "" { t } else { dash }]).join(h(1em))
       (
-        table.cell(rowspan: 2, align: top, anchor("risk", r.risk_id)),
-        [#r.event],
+        table.cell(rowspan: 2, align: top)[
+          #anchor("event", r.event_id) \ #small(ref-to("situation", r.situation_id))
+        ],
+        [#r.cause], [#r.harm],
         table.cell(align: center)[#r.initial.p], table.cell(align: center)[#r.initial.s],
         band-cell(r.initial.band),
         small(refs("mitigation", r.mitigations)),
         table.cell(align: center)[#r.residual.p], table.cell(align: center)[#r.residual.s],
         band-cell(r.residual.band),
-        table.cell(colspan: 8, small[
+        table.cell(colspan: 9, small[
           _Initial_ #h(0.5em) #just((("P", r.initial.p, r.p0_justification), ("S", r.initial.s, r.s0_justification))) \
           _Residual_ #h(0.5em) #if r.residual.assessed {
             just((("P", r.residual.p, r.p1_justification), ("S", r.residual.s, r.s1_justification)))
@@ -214,12 +190,14 @@ The information for the risk assessment consists of the following:
   [#heading(level: 3)[#m.mitigation_id — #m.mitigation]#label("mitigation-" + m.mitigation_id)]
   block(breakable: false, table(
     columns: (110pt, 1fr),
+    th[Status], [#if m.status != "" { m.status } else { dash }],
     th[Type], [#m.type],
-    th[Reduces], [#m.reduces.join(", ")],
+    th[Reduces], [#if m.reduces.len() > 0 { m.reduces.join(", ") } else { dash }],
+    th[Introduces hazards], refs("hazard", m.introduces_hazard),
     th[Implemented in], [#if m.implemented_in != "" { m.implemented_in } else { dash }],
     th[Design references], ids(m.design_ref),
     th[Verification (FAT)], ids(m.fat_ref),
-    th[Harmful events], refs("risk", m.risks),
+    th[Harmful events], refs("event", m.events),
   ))
 }
 
@@ -229,19 +207,20 @@ The information for the risk assessment consists of the following:
 #lead[#todo()]
 
 #let chunk = 9
-#for start in range(0, data.situations.len(), step: chunk) {
-  let cols = data.situations.slice(start, calc.min(start + chunk, data.situations.len()))
+#for start in range(0, data.tasks.len(), step: chunk) {
+  let cols = data.tasks.slice(start, calc.min(start + chunk, data.tasks.len()))
   doc-table(
     columns: (52pt,) + (1fr,) * cols.len(),
     align: center + horizon,
-    header: ([Hazard],) + cols.map(s => [#s.situation_id \ #text(7.5pt, weight: "regular", s.persons)]),
+    header: ([Hazard],) + cols.map(t => [#t.task_id \ #text(7.5pt, weight: "regular", t.person)]),
     ..for hz in data.hazards {
       ([*#hz.hazard_id*],)
-      for s in cols {
-        let here = data.risks.filter(r => r.hazard_id == hz.hazard_id and r.situation_id == s.situation_id)
-        (stack(spacing: 2pt, ..here.map(r => box(
-          fill: rgb(bands.at(r.initial.band).color), inset: (x: 2pt, y: 2pt), radius: 1pt,
-          text(7pt)[#r.risk_id *#bands.at(r.initial.band).label*],
+      for t in cols {
+        let here = data.events.filter(e => e.hazard_id == hz.hazard_id
+          and situations.at(e.situation_id).task_id == t.task_id)
+        (stack(spacing: 2pt, ..here.map(e => box(
+          fill: rgb(bands.at(e.initial.band).color), inset: (x: 2pt, y: 2pt), radius: 1pt,
+          text(7pt)[#e.event_id *#bands.at(e.initial.band).label*],
         ))),)
       }
     },
@@ -254,14 +233,14 @@ The information for the risk assessment consists of the following:
 #grid(
   columns: (1fr, 1fr),
   align: center,
-  [*Initial* \ #v(4pt) #count-matrix(data.risks.map(r => r.initial))],
-  [*Residual* \ #v(4pt) #count-matrix(data.risks.map(r => r.residual))],
+  [*Initial* \ #v(4pt) #count-matrix(data.events.map(e => e.initial))],
+  [*Residual* \ #v(4pt) #count-matrix(data.events.map(e => e.residual))],
 )
 
 == Residual Risk Table
 #lead[#todo()]
 
-#let justified = data.risks.filter(r => bands.at(r.residual.band).justify)
+#let justified = data.events.filter(r => bands.at(r.residual.band).justify)
 #if justified.len() == 0 [
   No residual risks require justification.
 ] else {
@@ -278,7 +257,7 @@ The information for the risk assessment consists of the following:
         .filter(((_, _, t)) => t != "")
         .map(((k, v, t)) => [*#k#v:* #t])
       (
-        strong(ref-to("risk", r.risk_id)), small(refs("mitigation", r.mitigations)),
+        strong(ref-to("event", r.event_id)), small(refs("mitigation", r.mitigations)),
         table.cell(align: center)[#r.initial.p], table.cell(align: center)[#r.initial.s],
         band-cell(r.initial.band),
         table.cell(align: center)[#r.residual.p], table.cell(align: center)[#r.residual.s],

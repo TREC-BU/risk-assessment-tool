@@ -1,4 +1,72 @@
 {
+ "Tasks": [
+  [
+   "",
+   "TASK DEFENITIONS"
+  ],
+  [
+   "",
+   "Tasks are actions performed by persons which interact with the ride. They exclude misuse."
+  ],
+  [
+   "",
+   "task_id",
+   "person_class",
+   "person",
+   "use_case",
+   "location",
+   "task"
+  ],
+  [
+   "",
+   "TS_001",
+   "Untrained Person",
+   "Rider",
+   "Operate with Riders",
+   "on ride",
+   "Interacting with the amusement ride or device"
+  ],
+  [
+   "",
+   "TS_002",
+   "Untrained Person",
+   "Bystander",
+   "Operate with Riders",
+   "queue line",
+   "Watching the ride from the queue"
+  ],
+  [
+   "",
+   "TS_003",
+   "Trained Person",
+   "Operator",
+   "Operate with Riders",
+   "control panel",
+   "Operational activities"
+  ],
+  [
+   "",
+   "TS_004",
+   "Trained Person",
+   "Maintainer",
+   "Non-Operation",
+   "tower",
+   "Maintenance activities"
+  ],
+  [
+   "",
+   "TS_005",
+   "Untrained Person",
+   "Rider",
+   "Evacuation",
+   "on ride",
+   "Evacuate the amusement ride or device"
+  ],
+  [
+   "",
+   "TS_006"
+  ]
+ ],
  "Hazards": [
   [
    "",
@@ -74,7 +142,7 @@
  "Situations": [
   [
    "",
-   "SITUATION DEFENITIONS"
+   "HAZARDOUS SITUATION DEFENITIONS"
   ],
   [
    "",
@@ -83,250 +151,109 @@
   [
    "",
    "situation_id",
-   "persons",
-   "ride_phase",
-   "misuse",
+   "task_id",
+   "hazard_id",
    "situtation"
   ],
   [
    "",
    "ST_001",
-   "Rider",
-   "Ride Cycle",
-   "0",
+   "TS_001",
+   "HZ_001",
    "rider seated in the vehicle while it is raised and dropped"
   ],
   [
    "",
    "ST_002",
-   "Rider",
-   "Loading",
-   "0",
-   "rider sitting down as the restraint closes"
-  ],
-  [
-   "",
-   "ST_003",
-   "Rider",
-   "Ride Cycle",
-   "1",
-   "rider reaching an arm outside the vehicle"
-  ],
-  [
-   "",
-   "ST_004",
-   "Bystander",
-   "Ride Cycle",
-   "0",
-   "bystander at the queue line fence"
-  ],
-  [
-   "",
-   "ST_005",
-   "Operator",
-   "Ride Cycle",
-   "0",
-   "operator at the ride control panel"
-  ],
-  [
-   "",
-   "ST_006",
-   "Maintainer",
-   "Maintenance",
-   "0",
+   "TS_004",
+   "HZ_001",
    "maintainer inside the tower with the vehicle raised"
   ],
   [
    "",
-   "ST_007",
-   "Maintainer",
-   "Maintenance",
-   "0",
-   "maintainer with an electrical enclosure open"
-  ],
-  [
-   "",
-   "ST_008",
-   "Rider",
-   "Evacuation",
-   "0",
+   "ST_003",
+   "TS_005",
+   "HZ_001",
    "rider stranded at height awaiting evacuation"
   ],
   [
    "",
-   "ST_009"
+   "ST_004",
+   "TS_001",
+   "HZ_002",
+   "rider seated in the vehicle while it is raised and dropped"
   ],
   [
    "",
-   "ST_010"
+   "ST_005",
+   "TS_004",
+   "HZ_003",
+   "maintainer with an electrical enclosure open"
+  ],
+  [
+   "",
+   "ST_006",
+   "TS_001",
+   "HZ_004",
+   "rider sitting down as the restraint closes"
+  ],
+  [
+   "",
+   "ST_007",
+   "TS_004",
+   "HZ_005",
+   "maintainer inside the tower with the vehicle raised"
+  ],
+  [
+   "",
+   "ST_008",
+   "TS_004",
+   "HZ_006",
+   "maintainer with an electrical enclosure open"
+  ],
+  [
+   "",
+   "ST_009",
+   "TS_002",
+   "HZ_007",
+   "bystander at the queue line fence"
+  ],
+  [
+   "",
+   "ST_010",
+   "TS_001",
+   "HZ_008",
+   "rider reaching an arm outside the vehicle"
+  ],
+  [
+   "",
+   "ST_011",
+   "TS_003",
+   "HZ_003",
+   "operator at the ride control panel"
+  ],
+  [
+   "",
+   "ST_012"
+  ],
+  [
+   "",
+   "ST_013"
   ]
  ],
- "Mitigations": [
+ "Harmful Events": [
   [
    "",
-   "MITIGATION DEFENITIONS"
+   "HARMFUL EVENT DEFENITIONS"
   ],
   [
    "",
-   "Eliminate risk, or reduce risk using Design or Administrative methods"
+   "harm: physical injury or damage to health. harmful event: the process in which the hazardous situation leads to harm."
   ],
   [
    "",
-   "mitigation_id",
-   "type",
-   "mitigation",
-   "reduces",
-   "implemented_in",
-   "fat_ref",
-   "design_ref"
-  ],
-  [
+   "Harm Definition",
    "",
-   "M_001",
-   "Administrative",
-   "Daily inspection of the suspension cable by personnel trained in cable inspection",
-   "P",
-   "Service Plan",
-   "",
-   ""
-  ],
-  [
-   "",
-   "M_002",
-   "Safeguarding",
-   "Second, redundant cable able to support the vehicle on its own",
-   "P",
-   "Mechanical & Structural Design",
-   "FAT_003;FAT_039",
-   "MSD_94.32.2 Redundant Suspension"
-  ],
-  [
-   "",
-   "M_003",
-   "Design",
-   "Shock absorber at the bottom of the drop shaft limits deceleration",
-   "S",
-   "Mechanical & Structural Design",
-   "FAT_040",
-   "MSD_94.1.1 Drop Shaft Shock Absorber"
-  ],
-  [
-   "",
-   "M_004",
-   "Design",
-   "Restraint actuator force limited by a pressure regulator",
-   "S",
-   "Mechanical & Structural Design",
-   "FAT_021",
-   "MSD_52.3 Restraint Actuator"
-  ],
-  [
-   "",
-   "M_005",
-   "Safeguarding",
-   "Fixed guard enclosing the drive belt and pulleys",
-   "P",
-   "Mechanical & Structural Design",
-   "FAT_030",
-   "MSD_61.2 Drive Guarding"
-  ],
-  [
-   "",
-   "M_006",
-   "Safeguarding",
-   "Mechanical locking pin holds the vehicle at height for maintenance",
-   "P",
-   "Mechanical & Structural Design",
-   "FAT_044",
-   "MSD_94.40 Maintenance Lock Pin"
-  ],
-  [
-   "",
-   "M_007",
-   "Administrative",
-   "Lockout/tagout procedure before any maintenance task",
-   "P",
-   "Service Plan",
-   "",
-   ""
-  ],
-  [
-   "",
-   "M_008",
-   "Design",
-   "Fused 24V distribution limits short-circuit current",
-   "S",
-   "Electrical Design",
-   "FAT_012",
-   ""
-  ],
-  [
-   "",
-   "M_009",
-   "Administrative",
-   "Loose articles collected at the station before boarding",
-   "P",
-   "Operations Manual",
-   "",
-   ""
-  ],
-  [
-   "",
-   "M_010",
-   "Design",
-   "Mesh screens on the vehicle keep dropped objects inside",
-   "P",
-   "Mechanical & Structural Design",
-   "FAT_035",
-   "MSD_94.20 Vehicle Mesh Screens"
-  ],
-  [
-   "",
-   "M_011",
-   "Design",
-   "Vehicle side walls and clearance envelope keep arms clear of the tower",
-   "P",
-   "Mechanical & Structural Design",
-   "FAT_036",
-   "MSD_94.22 Clearance Envelope"
-  ],
-  [
-   "",
-   "M_012",
-   "Elimination",
-   "Manual brake release lowers the vehicle under gravity, removing the need to evacuate at height",
-   "P",
-   "Mechanical & Structural Design",
-   "FAT_045",
-   "MSD_94.41 Manual Descent"
-  ],
-  [
-   "",
-   "M_013",
-   "Design",
-   "Mains terminals shrouded behind finger-safe covers",
-   "P",
-   "Electrical Design",
-   "FAT_013",
-   ""
-  ],
-  [
-   "",
-   "M_014"
-  ]
- ],
- "Risks": [
-  [
-   "",
-   "RISKS DEFENITIONS"
-  ],
-  [
-   "",
-   ""
-  ],
-  [
-   "",
-   "Risk Defenition",
    "",
    "",
    "",
@@ -344,10 +271,11 @@
   ],
   [
    "",
-   "risk_id",
-   "hazard_id",
+   "event_id",
    "situation_id",
-   "event",
+   "cause_type",
+   "cause",
+   "harm",
    "p0",
    "p0_justification",
    "s0",
@@ -362,10 +290,11 @@
   ],
   [
    "",
-   "RK_001",
-   "HZ_001",
+   "HE_001",
    "ST_001",
+   "Equipment Failure",
    "Suspension cable snaps and the vehicle free-falls; spinal injury",
+   "Irreversible spinal injury or death",
    "4",
    "Single failure of a wear part",
    "5",
@@ -380,10 +309,11 @@
   ],
   [
    "",
-   "RK_002",
-   "HZ_001",
-   "ST_006",
+   "HE_002",
+   "ST_002",
+   "Human Error",
    "Vehicle drops onto a maintainer working below it",
+   "Crush injury, likely fatal",
    "3",
    "Human error during a defined procedure",
    "5",
@@ -398,10 +328,11 @@
   ],
   [
    "",
-   "RK_003",
-   "HZ_001",
-   "ST_008",
+   "HE_003",
+   "ST_003",
+   "Equipment Failure",
    "Vehicle stops at height and riders are stranded",
+   "Distress; first aid at most",
    "3",
    "Single component failure with design margin",
    "2",
@@ -416,10 +347,11 @@
   ],
   [
    "",
-   "RK_004",
-   "HZ_002",
-   "ST_001",
+   "HE_004",
+   "ST_004",
+   "Equipment Failure",
    "Excessive deceleration at the end of the drop strains the rider's neck",
+   "Needs medical treatment",
    "3",
    "Shock absorber wear",
    "3",
@@ -434,10 +366,11 @@
   ],
   [
    "",
-   "RK_005",
-   "HZ_002",
-   "ST_001",
+   "HE_005",
+   "ST_004",
+   "Operational",
    "Rider's head strikes the headrest during an emergency stop",
+   "Bruising; first aid",
    "3",
    "E-stops are expected occasionally",
    "2",
@@ -452,10 +385,11 @@
   ],
   [
    "",
-   "RK_006",
-   "HZ_003",
-   "ST_007",
+   "HE_006",
+   "ST_005",
+   "Human Error",
    "Tool shorts the 24V bus and burns the maintainer",
+   "Severe burn",
    "3",
    "Human error in a defined procedure",
    "3",
@@ -470,10 +404,11 @@
   ],
   [
    "",
-   "RK_007",
-   "HZ_004",
-   "ST_002",
+   "HE_007",
+   "ST_006",
+   "Human Error",
    "Closing restraint pinches the rider's finger",
+   "First aid",
    "4",
    "Single human error by the rider",
    "2",
@@ -488,10 +423,11 @@
   ],
   [
    "",
-   "RK_008",
-   "HZ_005",
-   "ST_006",
+   "HE_008",
+   "ST_007",
+   "Human Error",
    "Maintainer's hand is drawn into the belt and pulley nip",
+   "Amputation",
    "3",
    "Human error during maintenance",
    "4",
@@ -506,10 +442,11 @@
   ],
   [
    "",
-   "RK_009",
-   "HZ_006",
-   "ST_007",
+   "HE_009",
+   "ST_008",
+   "Human Error",
    "Maintainer touches live mains terminals",
+   "Fatal electric shock",
    "2",
    "Error that LOTO should catch",
    "5",
@@ -524,10 +461,11 @@
   ],
   [
    "",
-   "RK_010",
-   "HZ_007",
-   "ST_004",
+   "HE_010",
+   "ST_009",
+   "Human Error",
    "Phone falls from the vehicle and strikes a bystander",
+   "Fractured bone",
    "3",
    "Rider error; policy not always followed",
    "4",
@@ -542,10 +480,11 @@
   ],
   [
    "",
-   "RK_011",
-   "HZ_008",
-   "ST_003",
+   "HE_011",
+   "ST_010",
+   "Misuse",
    "Rider's arm strikes the tower structure during the drop",
+   "Fracture or amputation",
    "3",
    "Foreseeable misuse",
    "4",
@@ -560,10 +499,11 @@
   ],
   [
    "",
-   "RK_012",
-   "HZ_003",
-   "ST_005",
+   "HE_012",
+   "ST_011",
+   "Human Error",
    "Operator touches exposed 24V wiring at the panel",
+   "No injury at 24V",
    "2",
    "Terminals inside the panel housing",
    "1",
@@ -578,11 +518,205 @@
   ],
   [
    "",
-   "RK_013"
+   "HE_013",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "0",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "0"
+  ]
+ ],
+ "Mitigations": [
+  [
+   "",
+   "MITIGATION DEFENITIONS"
   ],
   [
    "",
-   "RK_014"
+   "Eliminate risk, or reduce risk using Design or Administrative methods"
+  ],
+  [
+   "",
+   "mitigation_id",
+   "status",
+   "type",
+   "mitigation",
+   "reduces",
+   "introduces_hazard",
+   "implemented_in",
+   "fat_ref",
+   "design_ref"
+  ],
+  [
+   "",
+   "M_001",
+   "Proposed",
+   "Administrative",
+   "Daily inspection of the suspension cable by personnel trained in cable inspection",
+   "P",
+   "",
+   "Service Plan",
+   "",
+   ""
+  ],
+  [
+   "",
+   "M_002",
+   "Proposed",
+   "Safeguarding",
+   "Second, redundant cable able to support the vehicle on its own",
+   "P",
+   "",
+   "Mechanical & Structural Design",
+   "FAT_003;FAT_039",
+   "MSD_94.32.2 Redundant Suspension"
+  ],
+  [
+   "",
+   "M_003",
+   "Proposed",
+   "Design",
+   "Shock absorber at the bottom of the drop shaft limits deceleration",
+   "S",
+   "",
+   "Mechanical & Structural Design",
+   "FAT_040",
+   "MSD_94.1.1 Drop Shaft Shock Absorber"
+  ],
+  [
+   "",
+   "M_004",
+   "Proposed",
+   "Design",
+   "Restraint actuator force limited by a pressure regulator",
+   "S",
+   "",
+   "Mechanical & Structural Design",
+   "FAT_021",
+   "MSD_52.3 Restraint Actuator"
+  ],
+  [
+   "",
+   "M_005",
+   "Proposed",
+   "Safeguarding",
+   "Fixed guard enclosing the drive belt and pulleys",
+   "P",
+   "",
+   "Mechanical & Structural Design",
+   "FAT_030",
+   "MSD_61.2 Drive Guarding"
+  ],
+  [
+   "",
+   "M_006",
+   "Proposed",
+   "Safeguarding",
+   "Mechanical locking pin holds the vehicle at height for maintenance",
+   "P",
+   "",
+   "Mechanical & Structural Design",
+   "FAT_044",
+   "MSD_94.40 Maintenance Lock Pin"
+  ],
+  [
+   "",
+   "M_007",
+   "Proposed",
+   "Administrative",
+   "Lockout/tagout procedure before any maintenance task",
+   "P",
+   "",
+   "Service Plan",
+   "",
+   ""
+  ],
+  [
+   "",
+   "M_008",
+   "Proposed",
+   "Design",
+   "Fused 24V distribution limits short-circuit current",
+   "S",
+   "",
+   "Electrical Design",
+   "FAT_012",
+   ""
+  ],
+  [
+   "",
+   "M_009",
+   "Proposed",
+   "Administrative",
+   "Loose articles collected at the station before boarding",
+   "P",
+   "",
+   "Operations Manual",
+   "",
+   ""
+  ],
+  [
+   "",
+   "M_010",
+   "Proposed",
+   "Design",
+   "Mesh screens on the vehicle keep dropped objects inside",
+   "P",
+   "",
+   "Mechanical & Structural Design",
+   "FAT_035",
+   "MSD_94.20 Vehicle Mesh Screens"
+  ],
+  [
+   "",
+   "M_011",
+   "Proposed",
+   "Design",
+   "Vehicle side walls and clearance envelope keep arms clear of the tower",
+   "P",
+   "",
+   "Mechanical & Structural Design",
+   "FAT_036",
+   "MSD_94.22 Clearance Envelope"
+  ],
+  [
+   "",
+   "M_012",
+   "Proposed",
+   "Elimination",
+   "Manual brake release lowers the vehicle under gravity, removing the need to evacuate at height",
+   "P",
+   "",
+   "Mechanical & Structural Design",
+   "FAT_045",
+   "MSD_94.41 Manual Descent"
+  ],
+  [
+   "",
+   "M_013",
+   "Proposed",
+   "Design",
+   "Mains terminals shrouded behind finger-safe covers",
+   "P",
+   "",
+   "Electrical Design",
+   "FAT_013",
+   ""
+  ],
+  [
+   "",
+   "M_014",
+   "Proposed"
   ]
  ]
 }

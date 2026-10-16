@@ -7,6 +7,7 @@
 #let data = json("build/risk.json")
 
 #let by-id(items, key) = items.fold((:), (acc, it) => { acc.insert(it.at(key), it); acc })
+#let tasks = by-id(data.tasks, "task_id")
 #let hazards = by-id(data.hazards, "hazard_id")
 #let situations = by-id(data.situations, "situation_id")
 #let mitigations = by-id(data.mitigations, "mitigation_id")
@@ -28,16 +29,12 @@
 #let todo() = text(fill: red, weight: "bold")[\[TODO: write this\]]
 #let ids(list) = if list.len() == 0 { dash } else { list.join(", ") }
 
-// Cross-references: each risk and mitigation gets one anchor, placed where it
-// is assessed (Risk Evaluation) or described (Risk Mitigation).
+// Cross-references: each ID gets one anchor, placed where it is defined
+// (tasks, hazards, situations), assessed (harmful events, Risk Evaluation) or
+// described (mitigations, Risk Mitigation).
 #let anchor(kind, id) = [#strong(id)#label(kind + "-" + id)]
 #let ref-to(kind, id) = link(label(kind + "-" + id), id)
 #let refs(kind, list) = if list.len() == 0 { dash } else { list.map(id => ref-to(kind, id)).join(", ") }
-
-#let situation-label(sid) = {
-  let s = situations.at(sid)
-  [*#sid* #s.persons, #lower(s.ride_phase)#if s.misuse [ (misuse)]: #s.situation]
-}
 
 // 5 × 5 matrix, severity 5 at the top. `cell(s, p)` returns the content for
 // one cell; `shade(s, p)` whether to use the full band colour.
@@ -65,25 +62,31 @@
   )
 }
 
-// Tasks performed by each person for each use case (ASTM F3529 Table X1.1).
-// `use-cases` maps a use case to one entry per person; an entry is a task or
-// an array of tasks. Cells with fewer tasks than their row stretch to fill it.
-#let task-table(persons, use-cases) = {
-  let as-list(t) = if type(t) == array { t } else { (t,) }
-  let n-persons = persons.len()
+// Tasks performed by each person class for each use case (ASTM F3529
+// Table X1.1), filled from the Tasks tab. Columns follow `classes`, then any
+// other class the sheet uses; rows follow the sheet's order of use cases.
+// Cells with fewer tasks than their row stretch to fill it.
+#let task-table(classes, tasks) = {
+  let classes = classes + tasks.map(t => t.person_class).dedup().filter(c => c not in classes)
+  let use-cases = tasks.map(t => t.use_case).dedup()
+  let entry(t) = [
+    #anchor("task", t.task_id) #t.task \
+    #small[#t.person#if t.location != "" [ · #t.location]]
+  ]
   table(
-    columns: (110pt,) + (1fr,) * n-persons,
+    columns: (110pt,) + (1fr,) * classes.len(),
     align: left + top,
     inset: (x: 5pt, top: 7pt, bottom: 6pt),
     table.header(
       th(rowspan: 2, align: horizon)[Use Case],
-      th(colspan: n-persons, align: center)[Tasks (by Person)],
-      ..persons.map(p => th(align: center, p)),
+      th(colspan: classes.len(), align: center)[Tasks (by Person)],
+      ..classes.map(c => th(align: center, c)),
     ),
-    ..for (use-case, tasks) in use-cases {
-      assert(tasks.len() == n-persons,
-        message: "use case \"" + use-case + "\" needs one entry per person")
-      let lists = tasks.map(as-list)
+    ..for use-case in use-cases {
+      let lists = classes.map(c => {
+        let l = tasks.filter(t => t.use_case == use-case and t.person_class == c).map(entry)
+        if l.len() == 0 { (dash,) } else { l }
+      })
       let rows = calc.max(..lists.map(l => l.len()))
       // Emit row by row so Typst's grid places each cell in its column.
       for r in range(rows) {
@@ -91,7 +94,7 @@
         for l in lists {
           if r < l.len() {
             let span = if r == l.len() - 1 { rows - r } else { 1 }
-            (table.cell(rowspan: span)[#l.at(r)],)
+            (table.cell(rowspan: span, l.at(r)),)
           }
         }
       }

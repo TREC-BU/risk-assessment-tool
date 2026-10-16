@@ -1,4 +1,4 @@
-"""Row models for the four data tabs.
+"""Row models for the five data tabs.
 
 Pydantic handles per-cell parsing (types, score ranges, list splitting).
 Cross-row and method rules live in validate.py because they need the config.
@@ -65,6 +65,15 @@ Text = Annotated[str, Field(min_length=1)]
 IdList = Annotated[list[str], BeforeValidator(_id_list)]
 
 
+class Task(BaseModel):
+    task_id: Text
+    person_class: Text
+    person: Text
+    use_case: Text
+    location: str = ""
+    task: Text
+
+
 class Hazard(BaseModel):
     hazard_id: Text
     category: Text
@@ -73,27 +82,29 @@ class Hazard(BaseModel):
 
 class Situation(BaseModel):
     situation_id: Text
-    persons: Text
-    ride_phase: Text
-    misuse: Annotated[bool, BeforeValidator(_flag)] = False
+    task_id: Text
+    hazard_id: Text
     situation: Text
 
 
 class Mitigation(BaseModel):
     mitigation_id: Text
+    status: str = ""
     type: Text
     mitigation: Text
-    reduces: Annotated[list[str], BeforeValidator(_reduces), Field(min_length=1)]
+    reduces: Annotated[list[str], BeforeValidator(_reduces)] = []
+    introduces_hazard: IdList = []
     implemented_in: str = ""
     fat_ref: IdList = []
     design_ref: IdList = []
 
 
-class Risk(BaseModel):
-    risk_id: Text
-    hazard_id: Text
+class HarmfulEvent(BaseModel):
+    event_id: Text
     situation_id: Text
-    event: Text
+    cause_type: Text
+    cause: Text
+    harm: Text
     p0: Score
     p0_justification: str = ""
     s0: Score
@@ -106,21 +117,27 @@ class Risk(BaseModel):
 
 
 MODELS = {
+    "Tasks": Task,
     "Hazards": Hazard,
     "Situations": Situation,
+    "Harmful Events": HarmfulEvent,
     "Mitigations": Mitigation,
-    "Risks": Risk,
 }
 
 # A row counts as filled in once any of these has a value. The sheet
-# pre-numbers IDs and pre-fills formulas and defaults (misuse = 0,
-# initial_risk = 0), so those don't count.
+# pre-numbers IDs and pre-fills formulas and defaults (status = Proposed,
+# initial_risk = 0), so those don't count. Neither does a harmful event's
+# situation_id on its own.
 CONTENT_FIELDS = {
+    "Tasks": ("person_class", "person", "use_case", "location", "task"),
     "Hazards": ("category", "hazard"),
-    "Situations": ("persons", "ride_phase", "situation"),
+    "Situations": ("task_id", "hazard_id", "situation"),
+    "Harmful Events": ("cause_type", "cause", "harm"),
     "Mitigations": ("type", "mitigation"),
-    "Risks": ("hazard_id", "situation_id", "event"),
 }
+
+# Pre-filled default columns; a blank row holding only these isn't reported.
+DEFAULT_FIELDS = {"status"}
 
 # Spreadsheet formula columns; recomputed here, never read.
 COMPUTED_FIELDS = {"initial_risk", "mitigated_risk"}

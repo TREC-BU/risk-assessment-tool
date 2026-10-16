@@ -11,7 +11,7 @@ from risktool.slackbot import BuildService, announce_version, register
 from risktool.validate import Issue, Report
 
 ROOT = Path(__file__).resolve().parents[1]
-GIDS = {"Hazards": 11, "Situations": 22, "Mitigations": 33, "Risks": 44}
+GIDS = {"Hazards": 11, "Situations": 22, "Mitigations": 33, "Harmful Events": 44}
 
 
 class FakeClient:
@@ -95,7 +95,7 @@ def test_drive_failure_still_posts_the_pdf(exc, phrase):
 
 def test_invalid_build_is_not_published():
     c, published = FakeClient(), []
-    err = Issue("Risks", "hazard_id 'HZ_404' is not on the Hazards tab", 15, "RK_011")
+    err = Issue("Harmful Events", "situation_id 'ST_404' is not on the Situations tab", 15, "HE_011")
     s = service(c, run_build=lambda g, o: BuildResult(report([err]), None),
                 publish=lambda pdf: published.append(pdf))
     s.submit("U1")
@@ -105,7 +105,7 @@ def test_invalid_build_is_not_published():
 
 def test_invalid_sheet_lists_problems_with_row_links():
     c = FakeClient()
-    err = Issue("Risks", "hazard_id 'HZ_404' is not on the Hazards tab", 15, "RK_011")
+    err = Issue("Harmful Events", "situation_id 'ST_404' is not on the Situations tab", 15, "HE_011")
     info = Issue("Hazards", "hazard has no risks", 5, "HZ_002")
     s = service(c, run_build=lambda g, o: BuildResult(report([err], info=[info]), None))
     s.submit("U1")
@@ -113,7 +113,7 @@ def test_invalid_sheet_lists_problems_with_row_links():
     reply = c.of("post")[1]
     assert reply["thread_ts"] == "100.1"
     assert ("*<https://docs.google.com/spreadsheets/d/SHEET/edit#gid=44&range=A15|"
-            "Risks row 15 (RK_011)>*: hazard_id 'HZ_404' is not on the Hazards tab") in reply["text"]
+            "Harmful Events row 15 (HE_011)>*: situation_id 'ST_404' is not on the Situations tab") in reply["text"]
     assert ":information_source: *1 info*" in reply["text"] and "gid=11&range=A5" in reply["text"]
     assert "run `/risk` again" in reply["text"]
     assert c.of("upload") == []
@@ -122,7 +122,7 @@ def test_invalid_sheet_lists_problems_with_row_links():
 
 def test_warnings_do_not_stop_the_build():
     c = FakeClient()
-    warn = Issue("Risks", "residual risk is Unacceptable", 15, "RK_011")
+    warn = Issue("Harmful Events", "residual risk is Unacceptable", 15, "HE_011")
     s = service(c, run_build=lambda g, o: BuildResult(report(warnings=[warn]), o))
     s.submit("U1")
     s.run_pending()
@@ -134,7 +134,7 @@ def test_warnings_do_not_stop_the_build():
 
 def test_long_lists_are_cut_and_attached():
     c = FakeClient()
-    errs = [Issue("Risks", f"problem {i}", i, f"RK_{i:03}") for i in range(40)]
+    errs = [Issue("Harmful Events", f"problem {i}", i, f"HE_{i:03}") for i in range(40)]
     s = service(c, run_build=lambda g, o: BuildResult(report(errs), None))
     s.submit("U1")
     s.run_pending()
@@ -146,7 +146,7 @@ def test_long_lists_are_cut_and_attached():
 
 
 @pytest.mark.parametrize("exc, phrase", [
-    (SheetFormatError("the sheet has no tab named 'Risks'"), "no tab named 'Risks'"),
+    (SheetFormatError("the sheet has no tab named 'Harmful Events'"), "no tab named 'Harmful Events'"),
     (CompileError("boom"), "PDF compiler failed"),
     (RuntimeError("secret internals"), "something unexpected"),
 ])
@@ -177,7 +177,7 @@ def test_second_build_queues_behind_the_first():
 
 
 def test_escapes_slack_control_characters():
-    err = Issue("Risks", "event <script> & stuff", 5, "RK_001")
+    err = Issue("Harmful Events", "event <script> & stuff", 5, "HE_001")
     text, _ = fmt.result(report([err]), "SHEET", GIDS)
     assert "&lt;script&gt; &amp; stuff" in text
 

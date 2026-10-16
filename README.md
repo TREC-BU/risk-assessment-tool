@@ -100,27 +100,35 @@ Team members can build the PDF from Slack with `/risk`; the bot runs in Docker o
 
 ## Sheet layout
 
-The tool reads the tabs **Hazards**, **Situations**, **Mitigations** and
-**Risks**. It ignores the Definitions tab; `risk-config.typ` replaces it.
-Each table is found by its header row (`hazard_id`, `situation_id`, …), so
-title rows above it and column order don't matter. Column *names* do matter.
-Rows that only have a pre-filled ID are skipped. The formula columns
-`initial_risk` and `mitigated_risk` are ignored and recomputed.
+The tool reads the tabs **Tasks**, **Hazards**, **Situations**, **Harmful
+Events** and **Mitigations**. It ignores the Definitions tab;
+`risk-config.typ` replaces it. Each table is found by its header row
+(`task_id`, `hazard_id`, …), so title rows above it and column order don't
+matter. Column *names* do matter. Rows that only have a pre-filled ID (plus
+the default `status`, or a harmful event's `situation_id`) are skipped. The
+formula columns `initial_risk` and `mitigated_risk` are ignored and recomputed.
 
-- `mitigations`, `fat_ref` and `design_ref` are `;`-separated lists.
+- Each situation links one task (`task_id`) to one hazard (`hazard_id`); each
+  harmful event links one situation. A harmful event's hazard is its
+  situation's hazard.
+- The Tasks table in the PDF has a column per `person_class`, in the order set
+  by `person-classes` in `risk-assessment.typ`, and a row per `use_case`.
+- `mitigations`, `introduces_hazard`, `fat_ref` and `design_ref` are `;`- or
+  `,`-separated lists.
 - `reduces` is `P`, `S` or `P;S`.
-- `misuse` is 0/1.
 - `design_ref` starts with a document prefix from the config, e.g. `MSD_94.1.1 …`.
 
 ## Validation
 
 The document is living, so only problems that stop the PDF from rendering
 block the build. Each issue names the tab, spreadsheet row and ID, e.g.
-`Risks row 15 (RK_011): …`, at one of three levels.
+`Harmful Events row 15 (HE_011): …`, at one of three levels.
 
 **Errors** stop the build:
 
-- IDs are unique and every reference resolves. Lists and scores (1–5) parse.
+- IDs are unique and every reference resolves (situation → task and hazard,
+  harmful event → situation and mitigations, `introduces_hazard` → hazard).
+  Lists and scores (1–5) parse.
 - Mitigation types and `design_ref` prefixes are ones the config knows.
 - `p1` and `s1` are given together or not at all.
 
@@ -128,6 +136,7 @@ block the build. Each issue names the tab, spreadsheet row and ID, e.g.
 
 - An Unacceptable initial risk needs mitigations and residual `p1`/`s1`.
 - Residual scores can't exceed the initial ones.
+- A mitigation's `reduces` is blank.
 - S can only drop with a linked mitigation whose type may lower severity
   (Elimination, Design, Safeguarding) and whose `reduces` includes S.
   P can only drop with a linked mitigation that reduces P.
@@ -136,9 +145,10 @@ block the build. Each issue names the tab, spreadsheet row and ID, e.g.
   carries forward.
 - No residual may be worse than `acceptable-max`.
 
-**Info**: a hazard or situation with no risks; a hazard assessed only against
-rider situations; a risk mitigated only by Administrative measures; a
-mitigation not linked to any risk; a row ignored for having scores but no
+**Info**: a hazard or situation with no harmful events; a task with no
+situations; a hazard assessed only against rider tasks; a harmful event
+mitigated only by Administrative measures; a mitigation not linked to any
+harmful event; a row ignored for having scores but no
 content; missing `p0`/`s0` justifications.
 
 ## Tests

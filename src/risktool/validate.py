@@ -1,14 +1,14 @@
-"""Parse the four tabs, enforce the method rules and build the render data.
+"""Parse the five tabs, enforce the method rules and build the render data.
 
 Every problem is reported against the tab and spreadsheet row it came from,
 at one of three levels:
 
 - error: the sheet can't be read as written (bad IDs, unknown types, malformed
   cells). Stops the build, since the PDF can't render it.
-- warning: the method isn't satisfied yet (unmitigated or unjustified risk,
-  residual above `acceptable-max`). The document is living, so these never
+- warning: the method isn't satisfied yet (unmitigated or unjustified harmful
+  event, residual above `acceptable-max`). The document is living, so these never
   stop the build.
-- info: worth a look, e.g. a hazard with no risks.
+- info: worth a look, e.g. a hazard with no harmful events.
 """
 
 from __future__ import annotations
@@ -18,10 +18,13 @@ from dataclasses import dataclass, field
 from pydantic import BaseModel, ValidationError
 
 from .config import MethodConfig
-from .models import COMPUTED_FIELDS, CONTENT_FIELDS, MODELS, Hazard, Mitigation, Risk, Situation
+from .models import (
+    COMPUTED_FIELDS, CONTENT_FIELDS, DEFAULT_FIELDS, MODELS, HarmfulEvent, Hazard, Mitigation,
+    Situation, Task,
+)
 from .sheets import KEY_HEADER, TABS, Grid, Row, SheetFormatError, parse_tab
 
-# Persons value that marks a rider situation (for the rider-only warning).
+# Tasks person value that marks a rider (for the rider-only note).
 RIDER = "rider"
 
 
@@ -106,8 +109,7 @@ def _load_tab(tab: str, grid: Grid, report: Report) -> list[tuple[Row, BaseModel
         if not any(row.get(f) for f in CONTENT_FIELDS[tab]):
             stray = [
                 k for k, v in row.values.items()
-                if v and k != key and k not in COMPUTED_FIELDS
-                and not (k == "misuse" and v in ("0", "FALSE"))
+                if v and k != key and k not in COMPUTED_FIELDS and k not in DEFAULT_FIELDS
             ]
             if stray:
                 report.note(row, f"ignored: row has {', '.join(stray)} "
@@ -133,34 +135,44 @@ def validate(grids: dict[str, Grid], config: MethodConfig) -> Report:
     report = Report()
     loaded = {tab: _load_tab(tab, grids.get(tab, []), report) for tab in TABS}
 
+    tasks: dict[str, Task] = {t.task_id: t for _, t in loaded["Tasks"]}
     hazards: dict[str, Hazard] = {h.hazard_id: h for _, h in loaded["Hazards"]}
     situations: dict[str, Situation] = {s.situation_id: s for _, s in loaded["Situations"]}
     mitigations: dict[str, Mitigation] = {m.mitigation_id: m for _, m in loaded["Mitigations"]}
 
+    for row, s in loaded["Situations"]:
+        if s.task_id not in tasks:
+            report.error(row, f"task_id '{s.task_id}' is not on the Tasks tab")
+        if s.hazard_id not in hazards:
+            report.error(row, f"hazard_id '{s.hazard_id}' is not on the Hazards tab")
+
     for row, m in loaded["Mitigations"]:
-        _check_mitigation(row, m, config, report)
+        _check_mitigation(row, m, hazards, config, report)
 
-    risks_out = []
-    for row, r in loaded["Risks"]:
-        risks_out.append(_check_risk(row, r, hazards, situations, mitigations, config, report))
+    events_out = []
+    for row, e in loaded["Harmful Events"]:
+        events_out.append(_check_event(row, e, situations, mitigations, config, report))
 
-    _coverage_warnings(loaded, situations, report)
+    _coverage_notes(loaded, tasks, situations, report)
 
     if report.ok:
         report.data = {
+            "tasks": [t.model_dump() for t in tasks.values()],
             "hazards": [h.model_dump() for h in hazards.values()],
             "situations": [s.model_dump() for s in situations.values()],
+            "events": events_out,
             "mitigations": [
                 {**m.model_dump(),
-                 "risks": [r["risk_id"] for r in risks_out if m.mitigation_id in r["mitigations"]]}
+                 "events": [e["event_id"] for e in events_out
+                            if m.mitigation_id in e["mitigations"]]}
                 for m in mitigations.values()
             ],
-            "risks": risks_out,
         }
     return report
 
 
-def _check_mitigation(row: Row, m: Mitigation, config: MethodConfig, report: Report) -> None:
+def _check_mitigation(row: Row, m: Mitigation, hazards, config: MethodConfig,
+                      report: Report) -> None:
     mtype = config.mitigation_type(m.type)
     if mtype is None:
         names = ", ".join(t.name for t in config.mitigation_types)
@@ -175,16 +187,21 @@ def _check_mitigation(row: Row, m: Mitigation, config: MethodConfig, report: Rep
             report.error(row, f"design_ref '{ref}' has unknown document prefix "
                          f"'{prefix}' (known: {known})")
 
+    for hid in m.introduces_hazard:
+        if hid not in hazards:
+            report.error(row, f"introduces_hazard '{hid}' is not on the Hazards tab")
+
+    if not m.reduces:
+        report.warn(row, "reduces is blank; give P, S or both")
+
 
 def _scores(config: MethodConfig, p: int, s: int) -> dict:
     return {"p": p, "s": s, "score": p * s, "band": config.band(s, p)}
 
 
-def _check_risk(row, r: Risk, hazards, situations, mitigations, config: MethodConfig,
-                report: Report) -> dict:
+def _check_event(row, r: HarmfulEvent, situations, mitigations, config: MethodConfig,
+                 report: Report) -> dict:
     where = row
-    if r.hazard_id not in hazards:
-        report.error(where, f"hazard_id '{r.hazard_id}' is not on the Hazards tab")
     if r.situation_id not in situations:
         report.error(where, f"situation_id '{r.situation_id}' is not on the Situations tab")
     linked = []
@@ -253,28 +270,33 @@ def _check_risk(row, r: Risk, hazards, situations, mitigations, config: MethodCo
         if all(m.type in weak for m in linked):
             report.note(where, f"mitigated only by {'/'.join(sorted(weak))} measures")
 
+    situation = situations.get(r.situation_id)
     return {
         **r.model_dump(),
+        "hazard_id": situation.hazard_id if situation else "",
         "row": row.number,
         "initial": initial,
         "residual": {**residual, "assessed": has_residual},
     }
 
 
-def _coverage_warnings(loaded, situations, report: Report) -> None:
-    risks = [r for _, r in loaded["Risks"]]
+def _coverage_notes(loaded, tasks, situations, report: Report) -> None:
+    events = [e for _, e in loaded["Harmful Events"]]
     for row, h in loaded["Hazards"]:
-        mine = [r for r in risks if r.hazard_id == h.hazard_id]
+        mine = [s for s in situations.values() if s.hazard_id == h.hazard_id
+                and any(e.situation_id == s.situation_id for e in events)]
         if not mine:
-            report.note(row, "hazard has no risks")
+            report.note(row, "hazard has no harmful events")
             continue
-        persons = {situations[r.situation_id].persons.strip().lower()
-                   for r in mine if r.situation_id in situations}
+        persons = {tasks[s.task_id].person.strip().lower() for s in mine if s.task_id in tasks}
         if persons == {RIDER}:
-            report.note(row, "hazard is assessed only against rider situations")
+            report.note(row, "hazard is assessed only against rider tasks")
+    for row, t in loaded["Tasks"]:
+        if not any(s.task_id == t.task_id for s in situations.values()):
+            report.note(row, "task has no hazardous situations")
     for row, s in loaded["Situations"]:
-        if not any(r.situation_id == s.situation_id for r in risks):
-            report.note(row, "situation has no risks")
+        if not any(e.situation_id == s.situation_id for e in events):
+            report.note(row, "situation has no harmful events")
     for row, m in loaded["Mitigations"]:
-        if not any(m.mitigation_id in r.mitigations for r in risks):
-            report.note(row, "mitigation is not linked to any risk")
+        if not any(m.mitigation_id in e.mitigations for e in events):
+            report.note(row, "mitigation is not linked to any harmful event")

@@ -1,8 +1,8 @@
-"""Read the four data tabs from Google Sheets and turn them into row dicts.
+"""Read the five data tabs from Google Sheets and turn them into row dicts.
 
 Each tab has a title and description above the header row, so tables are
 located by header name rather than fixed position. Where a header cell is
-blank (a merged group header, e.g. Risks "mitigations"), the cell above it
+blank (a merged group header, e.g. Harmful Events "mitigations"), the cell above it
 supplies the name.
 """
 
@@ -12,14 +12,15 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-TABS = ("Hazards", "Situations", "Mitigations", "Risks")
+TABS = ("Tasks", "Hazards", "Situations", "Harmful Events", "Mitigations")
 
 # First column of each tab's header row; used to find the header.
 KEY_HEADER = {
+    "Tasks": "task_id",
     "Hazards": "hazard_id",
     "Situations": "situation_id",
+    "Harmful Events": "event_id",
     "Mitigations": "mitigation_id",
-    "Risks": "risk_id",
 }
 
 # Header spellings in the sheet that differ from the model field names.

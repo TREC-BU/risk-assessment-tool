@@ -155,7 +155,7 @@ read-only deploy key to the repo if it's private.
 | "I'm not in this channel yet" | `/invite @Risk Bot` in the channel. |
 | "`/risk` only works in #…" | Use the configured channel, or change `RISK_SLACK_CHANNEL`. |
 | "the bot can't open the Google Sheet" | Share the sheet with the service account's email (Viewer). |
-| "the sheet has no tab named '…'" | A tab was renamed; the four tabs must be Hazards, Situations, Mitigations, Risks. |
+| "the sheet has no tab named '…'" | A tab was renamed; the five tabs must be Tasks, Hazards, Situations, Harmful Events, Mitigations. |
 | "the PDF compiler failed" | Check the logs; usually a template edit that doesn't compile. |
 | `/risk` gives "dispatch_failed" | The bot isn't running: `docker compose ps`, then check the logs. |
 | "no 'published risk assessment' folder shared with the bot" | Share the folder with the service account as Editor, or set `RISK_DRIVE_FOLDER_ID`. |
